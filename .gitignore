@@ -54,3 +54,4 @@ docker-compose.override.yaml
 
 # Railway específico
 .railway/
+NUL
