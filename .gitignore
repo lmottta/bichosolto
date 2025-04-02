@@ -44,3 +44,13 @@ yarn-error.log*
 # Arquivos temporários
 .tmp
 .temp
+
+# Docker
+docker-compose.override.yml
+docker-compose.override.yaml
+.docker/data/
+/postgres_data/
+/pgadmin_data/
+
+# Railway específico
+.railway/
