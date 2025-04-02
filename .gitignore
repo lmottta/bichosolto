@@ -1,7 +1,5 @@
 # Dependências
 node_modules/
-.pnp/
-.pnp.js
 
 # Arquivos de ambiente
 .env
@@ -10,10 +8,6 @@ node_modules/
 .env.test.local
 .env.production.local
 
-# Arquivos de build
-/frontend/dist
-/frontend/build
-
 # Logs
 logs
 *.log
@@ -21,25 +15,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Arquivos de sistema
-.DS_Store
-Thumbs.db
+# Diretório de build
+/dist
+/build
 
-# Diretório de uploads
+# Arquivos de upload
 /backend/uploads/*
-!/backend/uploads/profiles/.gitkeep
-!/backend/uploads/animals/.gitkeep
-!/backend/uploads/events/.gitkeep
-!/backend/uploads/reports/.gitkeep
+!/backend/uploads/.gitkeep
 
-# Docker
-.docker/data
-docker-compose.override.yml
+# Arquivos de cobertura de testes
+/coverage
 
-# Railway
-.railway/
-
-# IDE e editores
+# Arquivos de configuração local
+.DS_Store
 .idea/
 .vscode/
 *.suo
@@ -47,10 +35,6 @@ docker-compose.override.yml
 *.njsproj
 *.sln
 *.sw?
-.history/
-
-# Arquivos de cobertura de testes
-/coverage
 
 # Arquivos de cache
 .npm
