@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #3B8C6E;
+  --secondary-color: #D9AF62;
+  --accent-color: #E67E22;
+  --neutral-color: #7D5A50;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 
+    'Helvetica Neue', Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Estilos para melhorar a legibilidade dos textos */
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.drop-shadow-text {
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Efeitos de transição suave */
+.transition-all {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Animação suave para o logo */
+@keyframes gentle-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 3s infinite;
+}
+
+/* Efeito de vidro fosco */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+}
+
+/* Melhorias de acessibilidade para contraste */
+.high-contrast-text {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Estilos para a barra de navegação com fundo de vidro */
+.navbar-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply font-sans text-base-content bg-base-100 min-h-screen;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+
+  h5 {
+    @apply text-lg md:text-xl;
+  }
+
+  h6 {
+    @apply text-base md:text-lg;
+  }
+}
+
+@layer components {
+  .custom-btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white rounded-lg px-4 py-2 font-medium transition-colors;
+  }
+
+  .custom-btn-secondary {
+    @apply bg-secondary-500 hover:bg-secondary-600 text-white rounded-lg px-4 py-2 font-medium transition-colors;
+  }
+
+  .custom-btn-accent {
+    @apply bg-green-500 hover:bg-green-600 text-white rounded-lg px-4 py-2 font-medium transition-colors;
+  }
+
+  .card-animal {
+    @apply card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300;
+  }
+
+  .form-control {
+    @apply mb-4;
+  }
+
+  .input-bordered {
+    @apply border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200;
+  }
+
+  .page-container {
+    @apply container mx-auto px-4 py-8;
+  }
+
+  .section-title {
+    @apply text-2xl font-bold mb-6 text-center;
+  }
+
+  .status-badge-pending {
+    @apply bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-badge-in-progress {
+    @apply bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-badge-resolved {
+    @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .animal-card-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
+  }
+}
