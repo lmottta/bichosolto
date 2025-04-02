@@ -49,6 +49,10 @@ O Animal Rescue Hub é uma plataforma que permite aos usuários denunciar maus-t
 ### Geolocalização
 - Google Maps API
 
+### DevOps
+- Docker
+- Railway
+
 ## Instalação e Configuração
 
 ### Pré-requisitos
@@ -89,6 +93,63 @@ npm run dev
 npm run dev
 ```
 
+## Implantação com Docker e Railway
+
+### Implantação Local com Docker
+
+1. Certifique-se de ter o Docker e Docker Compose instalados
+
+2. Configure as variáveis de ambiente
+   - Copie o arquivo `.env.example` para `.env` tanto no diretório backend quanto frontend
+   - Ajuste as variáveis conforme necessário
+
+3. Execute o aplicativo com Docker Compose
+```bash
+docker-compose up --build
+```
+
+4. Acesse o aplicativo em:
+   - Frontend: http://localhost:80
+   - Backend: http://localhost:5000
+
+### Implantação no Railway
+
+1. Faça login no Railway usando o CLI ou pelo site
+```bash
+railway login
+```
+
+2. Configure seu projeto no Railway
+```bash
+railway init
+```
+
+3. Provisione um banco de dados PostgreSQL no Railway
+```bash
+railway add
+# Selecione PostgreSQL
+```
+
+4. Configure as variáveis de ambiente no Railway
+   - API_URL: URL do seu serviço de backend
+   - NODE_ENV: production
+   - JWT_SECRET: Uma chave secreta forte para autenticação
+   - As credenciais do banco de dados serão configuradas automaticamente
+
+5. Faça o deploy do projeto
+```bash
+# Para fazer o deploy do backend
+railway up --service backend
+
+# Para fazer o deploy do frontend
+railway up --service frontend
+```
+
+6. Obtenha a URL do seu aplicativo
+```bash
+railway open
+```
+
 ## Estrutura do Projeto
 
 ```
@@ -100,13 +161,16 @@ animal-rescue-hub/
 │       ├── pages/      # Páginas da aplicação
 │       ├── services/   # Serviços e APIs
 │       └── styles/     # Estilos CSS
-└── backend/           # API Node.js/Express
-    ├── config/        # Configurações
-    ├── controllers/   # Controladores
-    ├── models/        # Modelos de dados
-    ├── routes/        # Rotas da API
-    ├── middlewares/   # Middlewares
-    └── utils/         # Utilitários
+├── backend/           # API Node.js/Express
+│   ├── config/        # Configurações
+│   ├── controllers/   # Controladores
+│   ├── models/        # Modelos de dados
+│   ├── routes/        # Rotas da API
+│   ├── middlewares/   # Middlewares
+│   └── utils/         # Utilitários
+├── docker-compose.yml # Configuração Docker Compose
+├── Dockerfile         # Dockerfile principal para Railway
+└── railway.json       # Configuração do Railway
 ```
 
 ## Licença
