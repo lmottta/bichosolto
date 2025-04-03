@@ -11,7 +11,7 @@ const models = require('./models');
 const routes = require('./routes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 // Configuração CORS aprimorada
 const corsOptions = {
@@ -37,6 +37,17 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Rotas da API
 app.use('/api', routes);
+
+// Configuração para servir o frontend em produção
+if (process.env.NODE_ENV === 'production') {
+  // Definir pasta estática
+  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
+  // Qualquer rota não definida pela API vai para o index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+  });
+}
 
 // Rota de teste para verificar se o servidor está funcionando
 app.get('/', (req, res) => {
