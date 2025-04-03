@@ -1,9 +1,16 @@
 FROM node:18-alpine AS builder
 
+# Definir diretório de trabalho
 WORKDIR /app
+
+# Verificar diretório atual (para diagnóstico)
+RUN ls -la /
 
 # Copiar arquivos de configuração do npm
 COPY package*.json ./
+
+# Verificar se os arquivos foram copiados
+RUN ls -la /app && echo "Package.json copiado com sucesso"
 
 # Instalar dependências 
 RUN npm install
@@ -26,7 +33,10 @@ RUN npm install -g serve
 COPY --from=builder /app/dist /app/dist
 
 # Expor a porta que o servidor vai usar
-EXPOSE 3000
+EXPOSE ${PORT:-3000}
+
+# Mostrar diretório para diagnóstico
+RUN ls -la /app
 
 # Comando para iniciar o servidor
-CMD ["serve", "-s", "dist", "-l", "3000"] 
+CMD ["serve", "-s", "dist", "-l", "${PORT:-3000}"] 

@@ -1,0 +1,28 @@
+FROM node:18-alpine
+
+# Configurar diretório de trabalho
+WORKDIR /app
+
+# Mostrar diretório atual 
+RUN pwd && ls -la /
+
+# Copiar todo o projeto
+COPY . .
+
+# Mostrar arquivos copiados
+RUN echo "Conteúdo de /app:" && ls -la /app
+
+# Instalar dependências
+RUN npm install
+
+# Construir a aplicação
+RUN npm run build
+
+# Instalar serve
+RUN npm install -g serve
+
+# Expor porta
+EXPOSE 3000
+
+# Iniciar servidor
+CMD ["serve", "-s", "dist", "-l", "3000"] 
