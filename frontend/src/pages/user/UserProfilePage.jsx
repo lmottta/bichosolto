@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from 'axios';
+import api from '../../api/axios';
 import { toast } from 'react-toastify';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const UserProfilePage = () => {
   const { user, updateUserInfo } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [profileData, setProfileData] = useState({
@@ -23,36 +25,89 @@ const UserProfilePage = () => {
     confirmPassword: '',
   });
 
-  useEffect(() => {
-    if (user) {
-      setProfileData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        city: user.city || '',
-        state: user.state || '',
-        bio: user.bio || '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      
-      // Definir imagePreview se o usuário já tiver uma imagem
-      if (user.profileImageUrl) {
-        setImagePreview(user.profileImageUrl);
-      } else if (user.profileImage) {
-        // Verificar se a URL já inclui o domínio completo
-        if (user.profileImage.startsWith('http')) {
-          setImagePreview(user.profileImage);
-        } else {
-          // Caso contrário, usar a URL base da API (definida no env ou usar localhost como fallback)
-          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-          setImagePreview(`${apiBaseUrl}${user.profileImage}`);
+  // Função para lidar com erros de carregamento de imagens
+  const handleImageError = useCallback((e) => {
+    console.log('Erro ao carregar imagem:', e.target.src);
+    e.target.onerror = null;
+    // Tentar URL alternativa se a principal falhar
+    if (user?.profileImage) {
+      // Obter a URL base da API das variáveis de ambiente
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const newSrc = `${apiBaseUrl}${user.profileImage}`;
+      console.log('Tentando URL alternativa:', newSrc);
+      e.target.src = newSrc;
+    } else {
+      // Fallback para ícone padrão em caso de erro
+      e.target.style.display = 'none';
+      if (e.target.parentNode) {
+        e.target.parentNode.classList.add('bg-gray-200', 'text-gray-400', 'flex', 'items-center', 'justify-center');
+        // Verificar se já existe um ícone para evitar duplicação
+        if (!e.target.parentNode.querySelector('svg')) {
+          e.target.parentNode.innerHTML = `
+            <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+            </svg>
+          `;
         }
       }
     }
   }, [user]);
+
+  // Carregamento inicial dos dados do perfil
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Se não temos dados do usuário, tentar buscar do servidor
+        if (!user) {
+          try {
+            await updateUserInfo();
+          } catch (error) {
+            console.error('Erro ao carregar perfil do usuário:', error);
+            toast.error('Não foi possível carregar seu perfil. Por favor, tente novamente mais tarde.');
+          }
+          return;
+        }
+        
+        // Preencher o formulário com os dados disponíveis
+        setProfileData({
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          address: user.address || '',
+          city: user.city || '',
+          state: user.state || '',
+          bio: user.bio || '',
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+        
+        // Definir imagePreview se o usuário já tiver uma imagem
+        if (user.profileImageUrl) {
+          // Adicionar timestamp para evitar cache da imagem
+          const timestamp = new Date().getTime();
+          setImagePreview(`${user.profileImageUrl}?t=${timestamp}`);
+        } else if (user.profileImage) {
+          // Verificar se a URL já inclui o domínio completo
+          if (user.profileImage.startsWith('http')) {
+            setImagePreview(`${user.profileImage}?t=${new Date().getTime()}`);
+          } else {
+            // Caso contrário, usar a URL base da API (definida no env ou usar localhost como fallback)
+            const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+            setImagePreview(`${apiBaseUrl}${user.profileImage}?t=${new Date().getTime()}`);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao configurar página de perfil:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadUserProfile();
+  }, [user, updateUserInfo]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -92,27 +147,27 @@ const UserProfilePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validar senhas se estiver tentando alterar
-    if (profileData.newPassword) {
-      if (!profileData.currentPassword) {
-        toast.error('Por favor, informe sua senha atual');
-        return;
-      }
-      
-      if (profileData.newPassword !== profileData.confirmPassword) {
-        toast.error('A nova senha e a confirmação não coincidem');
-        return;
-      }
-      
-      if (profileData.newPassword.length < 6) {
-        toast.error('A nova senha deve ter pelo menos 6 caracteres');
-        return;
-      }
-    }
-    
-    setIsSubmitting(true);
-    
     try {
+      // Validar senhas se estiver tentando alterar
+      if (profileData.newPassword) {
+        if (!profileData.currentPassword) {
+          toast.error('Por favor, informe sua senha atual');
+          return;
+        }
+        
+        if (profileData.newPassword !== profileData.confirmPassword) {
+          toast.error('A nova senha e a confirmação não coincidem');
+          return;
+        }
+        
+        if (profileData.newPassword.length < 6) {
+          toast.error('A nova senha deve ter pelo menos 6 caracteres');
+          return;
+        }
+      }
+      
+      setIsSubmitting(true);
+      
       const dataToSend = { ...profileData };
       
       // Remover campos não necessários se não estiver alterando senha
@@ -140,14 +195,14 @@ const UserProfilePage = () => {
         formData.append('profileImage', profileImage);
         
         // Enviar com cabeçalho multipart/form-data
-        profileResponse = await axios.put('/api/users/me', formData, {
+        profileResponse = await api.put('/api/users/me', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
       } else {
         // Enviar os dados sem imagem normalmente
-        profileResponse = await axios.put('/api/users/me', {
+        profileResponse = await api.put('/api/users/me', {
           name: dataToSend.name,
           phone: dataToSend.phone,
           address: dataToSend.address,
@@ -159,15 +214,25 @@ const UserProfilePage = () => {
       
       // Se está alterando a senha, fazer uma chamada separada
       if (dataToSend.newPassword) {
-        await axios.put('/api/users/me/password', {
+        await api.put('/api/users/me/password', {
           currentPassword: dataToSend.currentPassword,
           newPassword: dataToSend.newPassword
         });
+        
+        // Limpar campos de senha após a alteração
+        setProfileData(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        }));
+        
+        toast.success('Senha alterada com sucesso!');
       }
       
       // Atualizar o contexto de autenticação com as novas informações
       console.log('Resposta da API (perfil):', profileResponse.data);
-      updateUserInfo(profileResponse.data);
+      await updateUserInfo(profileResponse.data);
       
       // Atualizar o preview da imagem se tiver uma URL na resposta
       if (profileResponse.data.profileImageUrl) {
@@ -209,10 +274,33 @@ const UserProfilePage = () => {
     }
   };
 
+  // Exibir spinner enquanto carrega os dados
+  if (isLoading) {
+    return <LoadingSpinner fullScreen message="Carregando seu perfil..." />;
+  }
+  
+  // Verificar se temos dados do usuário
   if (!user) {
     return (
-      <div className="flex justify-center items-center min-h-[70vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="flex flex-col justify-center items-center min-h-[70vh] p-4">
+        <div className="text-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-700">Não foi possível carregar seu perfil</h2>
+          <p className="text-gray-500 mt-2">Você pode tentar recarregar a página ou fazer login novamente.</p>
+        </div>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-focus transition-colors"
+          >
+            Recarregar
+          </button>
+          <Link 
+            to="/login" 
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+          >
+            Fazer Login
+          </Link>
+        </div>
       </div>
     );
   }
@@ -240,26 +328,12 @@ const UserProfilePage = () => {
                 {/* Avatar/Logo */}
                 <div className="flex flex-col items-center">
                   <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 mb-2">
-                    {user.profileImageUrl ? (
+                    {imagePreview ? (
                       <img 
-                        src={user.profileImageUrl} 
+                        src={imagePreview} 
                         alt={`${user.name || 'Usuário'}`}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          // Tentar URL alternativa se a principal falhar
-                          if (user.profileImage) {
-                            const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-                            e.target.src = `${apiBaseUrl}${user.profileImage}`;
-                          } else {
-                            // Fallback para ícone padrão em caso de erro
-                            e.target.style.display = 'none';
-                            e.target.parentNode.classList.add('bg-gray-200', 'text-gray-400', 'flex', 'items-center', 'justify-center');
-                            const icon = document.createElement('div');
-                            icon.innerHTML = '<svg class="w-16 h-16" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>';
-                            e.target.parentNode.appendChild(icon);
-                          }
-                        }}
+                        onError={handleImageError}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
@@ -337,6 +411,7 @@ const UserProfilePage = () => {
                 <button
                   onClick={() => setIsEditing(false)}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 transition-colors"
+                  disabled={isSubmitting}
                 >
                   Cancelar
                 </button>
@@ -351,14 +426,7 @@ const UserProfilePage = () => {
                         src={imagePreview} 
                         alt="Preview" 
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.style.display = 'none';
-                          e.target.parentNode.classList.add('bg-gray-200', 'text-gray-400', 'flex', 'items-center', 'justify-center');
-                          const icon = document.createElement('div');
-                          icon.innerHTML = '<svg class="w-16 h-16" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>';
-                          e.target.parentNode.appendChild(icon);
-                        }}
+                        onError={handleImageError}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
@@ -369,13 +437,14 @@ const UserProfilePage = () => {
                     )}
                   </div>
                   
-                  <label className="cursor-pointer bg-primary text-white py-2 px-4 rounded-md hover:bg-primary-focus transition-colors">
+                  <label className={`cursor-pointer text-white py-2 px-4 rounded-md transition-colors ${isSubmitting ? 'bg-gray-400' : 'bg-primary hover:bg-primary-focus'}`}>
                     <span>{user.role === 'ong' ? 'Alterar Logo' : 'Alterar Avatar'}</span>
                     <input 
                       type="file" 
                       accept="image/jpeg, image/png, image/jpg"
                       onChange={handleImageChange}
                       className="hidden"
+                      disabled={isSubmitting}
                     />
                   </label>
                   
@@ -477,10 +546,9 @@ const UserProfilePage = () => {
                   </div>
                 </div>
                 
-                <h3 className="text-xl font-semibold mb-4">Alterar Senha</h3>
-                <p className="text-sm text-gray-600 mb-4">Deixe os campos em branco se não deseja alterar sua senha</p>
+                <div className="divider my-6">Alterar Senha (opcional)</div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div className="form-control">
                     <label className="label">
                       <span className="label-text">Senha Atual</span>
@@ -521,13 +589,22 @@ const UserProfilePage = () => {
                   </div>
                 </div>
                 
-                <div className="flex justify-end">
+                <div className="flex justify-end mt-6">
                   <button
                     type="submit"
-                    className="custom-btn-primary"
+                    className={`px-6 py-2 rounded-md text-white transition-colors ${
+                      isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-focus'
+                    }`}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
+                    {isSubmitting ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs mr-2"></span>
+                        Salvando...
+                      </>
+                    ) : (
+                      'Salvar Alterações'
+                    )}
                   </button>
                 </div>
               </form>

@@ -1,3 +1,5 @@
+import './utils/disableMixpanel'; // Desabilitar o Mixpanel antes de tudo para evitar erros
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
