@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+// Remover a dependência do JWT mas mantê-la para não quebrar outros componentes
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
@@ -108,11 +109,12 @@ router.post(
 
       console.log('Usuário criado com sucesso:', user.id);
 
-      // Gerar token JWT
+      // Gerar um token JWT apenas para manter compatibilidade com clientes existentes
+      // Este token não será usado para autenticação pelo novo frontend
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
+        process.env.JWT_SECRET || 'simplificado',
+        { expiresIn: '30d' }
       );
 
       // Retornar usuário e token (sem a senha)
@@ -143,7 +145,7 @@ router.post(
 
       return res.status(201).json({ 
         user: userResponse, 
-        token,
+        token, // mantido para compatibilidade
         message: role === 'ong' 
           ? 'Cadastro realizado com sucesso! Sua conta será analisada antes de ser ativada.'
           : 'Cadastro realizado com sucesso!'
@@ -184,11 +186,11 @@ router.post(
         return res.status(401).json({ message: 'Conta desativada. Entre em contato com o suporte.' });
       }
 
-      // Gerar token JWT
+      // Gerar token JWT apenas para compatibilidade
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
+        process.env.JWT_SECRET || 'simplificado',
+        { expiresIn: '30d' }
       );
 
       // Retornar usuário e token (sem a senha)
@@ -203,6 +205,18 @@ router.post(
         state: user.state,
         profileImage: user.profileImage,
         createdAt: user.createdAt,
+        // Incluir campos de ONG se aplicável
+        ...(user.role === 'ong' && {
+          cnpj: user.cnpj,
+          description: user.description,
+          foundingDate: user.foundingDate,
+          website: user.website,
+          socialMedia: user.socialMedia,
+          responsibleName: user.responsibleName,
+          responsiblePhone: user.responsiblePhone,
+          postalCode: user.postalCode,
+          isVerified: user.isVerified
+        })
       };
 
       res.json({ user: userResponse, token });

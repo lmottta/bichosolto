@@ -2,267 +2,137 @@ import { createContext, useState, useContext, useEffect, useCallback } from 'rea
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import api from '../api/axios'
-import jwtDecode from 'jwt-decode'
 import { toast } from 'react-toastify'
-import SafeStorage from '../components/common/SafeStorage'
 
 const AuthContext = createContext()
 
 export const useAuth = () => useContext(AuthContext)
 
-// Cache para evitar decodificações repetidas do mesmo token
-const tokenValidityCache = new Map();
+// Chaves para armazenamento local
+const USER_KEY = 'auth_user';
+const AUTH_KEY = 'auth_status';
 
-// Nome da chave usada para o token no armazenamento
-const TOKEN_KEY = 'auth_token';
+// Função simples para armazenar informações no localStorage com tratamento de erros
+const safeSetItem = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    console.error(`Erro ao salvar ${key}:`, e);
+    return false;
+  }
+};
 
-// TTL padrão para tokens em segundos (3 horas)
-const DEFAULT_TOKEN_TTL = 3 * 60 * 60;
+// Função para obter informações do localStorage com tratamento de erros
+const safeGetItem = (key) => {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : null;
+  } catch (e) {
+    console.error(`Erro ao obter ${key}:`, e);
+    return null;
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [lastTokenCheck, setLastTokenCheck] = useState(0)
-  const [tokenCheckEnabled, setTokenCheckEnabled] = useState(true)
   const navigate = useNavigate()
 
-  // Função para verificar se o token é válido (com cache para performance)
-  const isTokenValid = useCallback((token) => {
-    if (!token) return false;
-    
-    // Verificar se o resultado já está em cache
-    if (tokenValidityCache.has(token)) {
-      const cachedResult = tokenValidityCache.get(token);
-      // Se o resultado em cache ainda for válido (não expirou desde a última verificação)
-      if (cachedResult.timestamp > Date.now()) {
-        return cachedResult.isValid;
-      }
-      // Remover resultado expirado do cache
-      tokenValidityCache.delete(token);
+  // Configuração de autenticação nas requisições
+  const setupAxiosAuth = useCallback((userData) => {
+    if (!userData) {
+      delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
+      return;
     }
     
-    try {
-      // Verificar se o token expirou
-      const decodedToken = jwtDecode(token);
-      const currentTime = Date.now() / 1000;
-      const isValid = decodedToken.exp > currentTime;
-      
-      // Guardar resultado em cache (válido por 1 minuto ou até 10 segundos antes da expiração)
-      const expiresIn = (decodedToken.exp - currentTime) * 1000;
-      const cacheValidityTime = Math.min(60000, Math.max(0, expiresIn - 10000));
-      
-      if (cacheValidityTime > 0) {
-        tokenValidityCache.set(token, {
-          isValid,
-          timestamp: Date.now() + cacheValidityTime
-        });
-      }
-      
-      return isValid;
-    } catch (error) {
-      console.error('Erro ao decodificar token:', error);
-      // Não armazenar em cache resultados de erro para permitir novas tentativas
-      return false;
-    }
+    const authValue = `Bearer SimpleAuth_${userData.id}_${userData.email}`;
+    axios.defaults.headers.common['Authorization'] = authValue;
+    api.defaults.headers.common['Authorization'] = authValue;
+    console.log('Autenticação configurada nos headers');
   }, []);
 
-  // Obter o token de forma segura
-  const getToken = useCallback(() => {
-    return SafeStorage.getItem(TOKEN_KEY);
-  }, []);
-
-  // Salvar o token de forma segura
-  const saveToken = useCallback((token) => {
-    try {
-      // Decodificar o token para obter a data de expiração
-      const decodedToken = jwtDecode(token);
-      const expiresIn = decodedToken.exp - (Date.now() / 1000);
-      
-      // Salvar o token com TTL
-      const ttl = Math.max(expiresIn - 60, DEFAULT_TOKEN_TTL); // Expiração - 60 segundos de segurança
-      
-      console.log(`Salvando token válido por ${Math.round(ttl / 60)} minutos`);
-      return SafeStorage.setItem(TOKEN_KEY, token, { ttl });
-    } catch (error) {
-      console.error('Erro ao salvar token:', error);
-      // Fallback: salvar sem metadata ou TTL
-      return SafeStorage.setItem(TOKEN_KEY, token);
-    }
-  }, []);
-
-  // Configuração de token nas requisições
-  const setupAxiosInterceptors = useCallback((token) => {
-    if (!token) return;
-    
-    try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      console.log('Token configurado nos interceptors');
-    } catch (error) {
-      console.error('Erro ao configurar token nos interceptors:', error);
-    }
-  }, []);
-
-  // Verificar se o usuário já está autenticado ao carregar a página - otimizado
+  // Verificar se o usuário já está autenticado ao carregar a página
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = getToken();
-        console.log('Verificando autenticação com token:', token ? 'presente' : 'ausente');
+        // Verificar se há dados de autenticação salvos
+        const savedUser = safeGetItem(USER_KEY);
+        const isUserAuth = safeGetItem(AUTH_KEY);
         
-        // Se não tem token, não está autenticado
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-
-        // Verificar validade do token - se não for válido, nem tenta fazer requisição
-        if (!isTokenValid(token)) {
-          console.log('Token inválido ou expirado, fazendo logout silencioso');
-          silentLogout();
+        console.log('Verificando autenticação:', isUserAuth ? 'autenticado' : 'não autenticado');
+        
+        if (!savedUser || !isUserAuth) {
           setIsLoading(false);
           return;
         }
         
-        // Configurar o token no cabeçalho das requisições
-        setupAxiosInterceptors(token);
+        // Configurar a autenticação nas requisições
+        setupAxiosAuth(savedUser);
         
-        // Obter informações do usuário com tratamento de erros robusto
+        // Verificar com o servidor se a sessão ainda é válida
         try {
           const response = await api.get('/api/users/me');
           if (response?.data) {
             setUser(response.data);
             setIsAuthenticated(true);
-            console.log('Usuário autenticado com sucesso');
+            // Atualizar os dados salvos caso o servidor tenha retornado dados atualizados
+            safeSetItem(USER_KEY, response.data);
+            console.log('Autenticação restaurada com sucesso');
           } else {
             console.warn('Resposta válida, mas sem dados do usuário');
-            silentLogout();
+            clearAuth();
           }
-        } catch (fetchError) {
-          console.error('Erro ao buscar dados do usuário:', fetchError);
-          
-          // Somente fazer logout em caso de erro 401 (não autorizado)
-          if (fetchError.response && fetchError.response.status === 401) {
-            silentLogout();
-          } else {
-            // Para outros erros, manter o token mas definir como não autenticado temporariamente
-            // Isso evita deslogar o usuário devido a problemas de rede temporários
-            setIsAuthenticated(false);
-          }
+        } catch (error) {
+          console.error('Erro ao verificar autenticação:', error);
+          clearAuth();
         }
       } catch (error) {
         console.error('Erro geral na verificação de autenticação:', error);
+        clearAuth();
       } finally {
         setIsLoading(false);
       }
     };
     
     checkAuth();
-  }, [getToken, isTokenValid, setupAxiosInterceptors]);
+  }, [setupAxiosAuth]);
 
-  // Ouvir eventos de mudança de armazenamento
-  useEffect(() => {
-    // Função para lidar com mudanças no safestorage
-    const handleStorageChange = (event) => {
-      if (!event.detail) return;
-      
-      const { key, newValue } = event.detail;
-      
-      // Se o token foi alterado
-      if (key === TOKEN_KEY) {
-        if (!newValue) {
-          // Token removido
-          console.log('Token removido em outra guia');
-          setUser(null);
-          setIsAuthenticated(false);
-        } else if (newValue !== getToken()) {
-          // Token alterado
-          console.log('Token alterado em outra guia');
-          // Recarregar a página para atualizar o estado
-          window.location.reload();
-        }
-      }
-    };
-    
-    // Adicionar listener para o evento personalizado
-    window.addEventListener('safestorage', handleStorageChange);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('safestorage', handleStorageChange);
-    };
-  }, [getToken]);
-
-  // Verificar a validade do token periodicamente de forma otimizada
-  useEffect(() => {
-    // Só configura o intervalo se a verificação de token estiver habilitada
-    if (!tokenCheckEnabled) return;
-    
-    const interval = setInterval(() => {
-      // Evitar verificações desnecessárias quando o usuário já não está autenticado
-      if (!isAuthenticated) return;
-      
-      const token = getToken();
-      const now = Date.now();
-      
-      // Otimização: verificar no máximo uma vez a cada 3 minutos
-      if (token && now - lastTokenCheck > 3 * 60 * 1000) {
-        if (!isTokenValid(token)) {
-          console.log('Token expirou durante a sessão ativa');
-          silentLogout();
-        }
-        setLastTokenCheck(now);
-      }
-    }, 60 * 1000); // Verificar a cada minuto
-    
-    return () => clearInterval(interval);
-  }, [isAuthenticated, lastTokenCheck, isTokenValid, tokenCheckEnabled, getToken]);
-
-  // Logout silencioso (sem mensagens ou redirecionamentos)
-  const silentLogout = useCallback(() => {
-    SafeStorage.removeItem(TOKEN_KEY);
+  // Função para limpar dados de autenticação
+  const clearAuth = useCallback(() => {
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(AUTH_KEY);
     delete axios.defaults.headers.common['Authorization'];
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
     setIsAuthenticated(false);
-    tokenValidityCache.clear();
   }, []);
 
-  // Função de login com segurança aprimorada
+  // Função de login simplificada
   const login = async (email, password) => {
     try {
       setIsLoading(true);
       
-      // Desabilitar verificação de token durante o login para evitar conflitos
-      setTokenCheckEnabled(false);
-      
       const response = await api.post('/api/auth/login', { email, password });
-      const { token, user } = response.data;
+      const userData = response.data.user;
       
-      // Verificação robusta de resposta
-      if (!token || !user) {
-        throw new Error('Token ou dados do usuário não fornecidos pelo servidor');
+      // Verificação simplificada
+      if (!userData) {
+        throw new Error('Dados do usuário não fornecidos pelo servidor');
       }
       
-      // Validar token antes de prosseguir
-      if (!isTokenValid(token)) {
-        throw new Error('Servidor retornou um token inválido ou expirado');
-      }
+      // Salvar dados do usuário e status de autenticação
+      safeSetItem(USER_KEY, userData);
+      safeSetItem(AUTH_KEY, true);
       
-      // Salvar token de forma segura
-      saveToken(token);
+      // Configurar headers de autenticação
+      setupAxiosAuth(userData);
       
-      // Configurar o token no cabeçalho das requisições
-      setupAxiosInterceptors(token);
-      
-      setUser(user);
+      setUser(userData);
       setIsAuthenticated(true);
-      setLastTokenCheck(Date.now());
       toast.success('Login realizado com sucesso!');
-      
-      // Reativar verificação de token após login bem-sucedido
-      setTimeout(() => setTokenCheckEnabled(true), 1000);
       
       return true;
     } catch (error) {
@@ -281,19 +151,14 @@ export const AuthProvider = ({ children }) => {
       return false;
     } finally {
       setIsLoading(false);
-      // Reativar verificação mesmo em caso de erro
-      setTimeout(() => setTokenCheckEnabled(true), 1000);
     }
   };
 
-  // Função de registro otimizada
+  // Função de registro simplificada
   const register = async (userData) => {
     try {
       setIsLoading(true);
       console.log('Iniciando processo de registro');
-      
-      // Desabilitar verificação de token durante o registro
-      setTokenCheckEnabled(false);
       
       // Sanitizar dados antes de enviar
       const sanitizedData = { ...userData };
@@ -304,6 +169,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       if (sanitizedData.role === 'ong') {
+        // Sanitização para campos de ONG
         if (typeof sanitizedData.cnpj === 'string') {
           sanitizedData.cnpj = sanitizedData.cnpj.replace(/\D/g, '');
         }
@@ -329,70 +195,35 @@ export const AuthProvider = ({ children }) => {
       
       console.log('Dados sanitizados para registro:', {...sanitizedData, password: '*****'});
       
-      // Log detalhado da requisição
-      console.log(`Enviando POST para ${api.defaults.baseURL}/api/auth/register`);
-      
-      // Tentar a requisição com timeout aumentado e encapsulamento para evitar travamentos
+      // Tentar a requisição com timeout 
       const response = await Promise.race([
         api.post('/api/auth/register', sanitizedData),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout manual - servidor não respondeu em tempo hábil')), 20000)
+          setTimeout(() => reject(new Error('Timeout - servidor não respondeu em tempo hábil')), 20000)
         )
       ]);
       
-      console.log('Resposta recebida com sucesso:', response.status);
-      console.log('Dados do usuário:', response.data.user ? {...response.data.user, password: undefined} : 'Sem dados de usuário');
+      const userData = response.data.user;
       
-      const { token, user } = response.data;
-      
-      // Verificação robusta de resposta
-      if (!token || !user) {
-        throw new Error('Token ou dados do usuário não fornecidos pelo servidor');
+      // Verificação simplificada
+      if (!userData) {
+        throw new Error('Dados do usuário não fornecidos pelo servidor');
       }
       
-      // Validar token antes de prosseguir
-      if (!isTokenValid(token)) {
-        throw new Error('Servidor retornou um token inválido ou expirado');
-      }
+      // Salvar dados do usuário e status de autenticação
+      safeSetItem(USER_KEY, userData);
+      safeSetItem(AUTH_KEY, true);
       
-      // Salvar token de forma segura
-      saveToken(token);
+      // Configurar headers de autenticação
+      setupAxiosAuth(userData);
       
-      // Configurar o token no cabeçalho das requisições
-      setupAxiosInterceptors(token);
-      
-      setUser(user);
+      setUser(userData);
       setIsAuthenticated(true);
-      setLastTokenCheck(Date.now());
       toast.success('Cadastro realizado com sucesso!');
-      
-      // Reativar verificação de token após registro bem-sucedido
-      setTimeout(() => setTokenCheckEnabled(true), 1000);
       
       return true;
     } catch (error) {
       console.error('Erro ao fazer cadastro:', error);
-      
-      // Log detalhado de erro
-      if (error.response) {
-        // O servidor respondeu com um código de status fora do intervalo 2xx
-        console.error(`Erro na resposta do servidor: ${error.response.status}`, error.response.data);
-      } else if (error.request) {
-        // A requisição foi feita mas nenhuma resposta foi recebida
-        console.error('Sem resposta do servidor:', error.request);
-        
-        // Verificar se o backend está em execução
-        try {
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-          const testConnection = await fetch(`${API_URL}/api`);
-          console.log('Teste de conexão com backend:', testConnection.status);
-        } catch (connError) {
-          console.error('Backend não está acessível:', connError);
-        }
-      } else {
-        // Algo aconteceu durante a configuração da requisição que desencadeou um erro
-        console.error('Erro na configuração da requisição:', error.message);
-      }
       
       // Extrair mensagem de erro da resposta da API
       let errorMessage = 'Erro ao fazer cadastro';
@@ -415,7 +246,6 @@ export const AuthProvider = ({ children }) => {
         }
       } else if (error.request) {
         // Requisição foi feita mas não houve resposta
-        console.log('Sem resposta do servidor:', error.request);
         errorMessage = 'Servidor não respondeu. Verifique se o backend está em execução.';
       } else if (error.message) {
         // Erro de rede ou outros erros
@@ -426,12 +256,10 @@ export const AuthProvider = ({ children }) => {
       return false;
     } finally {
       setIsLoading(false);
-      // Reativar verificação de token mesmo em caso de erro
-      setTimeout(() => setTokenCheckEnabled(true), 1000);
     }
   };
 
-  // Função para atualizar os dados do usuário no contexto - Otimizada
+  // Função para atualizar os dados do usuário no contexto
   const updateUserInfo = async (userData) => {
     try {
       setIsLoading(true);
@@ -440,6 +268,7 @@ export const AuthProvider = ({ children }) => {
       if (userData) {
         console.log('Atualizando dados do usuário no contexto:', userData);
         setUser(userData);
+        safeSetItem(USER_KEY, userData);
         return true;
       }
       
@@ -450,8 +279,10 @@ export const AuthProvider = ({ children }) => {
       if (response?.data) {
         console.log('Dados do usuário buscados da API:', response.data);
         setUser(response.data);
+        safeSetItem(USER_KEY, response.data);
         // Se os dados foram carregados com sucesso, garantimos que o usuário está autenticado
         setIsAuthenticated(true);
+        safeSetItem(AUTH_KEY, true);
         return true;
       } else {
         console.warn('Resposta sem dados de usuário');
@@ -462,8 +293,8 @@ export const AuthProvider = ({ children }) => {
       
       // Se for erro de autorização, fazer logout
       if (error.response && error.response.status === 401) {
-        // Usar logout silencioso para evitar redirecionamentos durante a navegação
-        silentLogout();
+        // Limpar autenticação
+        clearAuth();
         toast.error('Sessão expirada. Por favor, faça login novamente.');
       } else {
         // Extrair mensagem de erro da resposta da API
@@ -485,10 +316,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Função de logout com melhor tratamento de redirecionamento
+  // Função de logout
   const logout = useCallback(() => {
-    // Limpar todos os dados de autenticação
-    silentLogout();
+    // Limpar dados de autenticação
+    clearAuth();
     
     // Lista de páginas públicas
     const publicRoutes = ['/donate', '/volunteer', '/animals', '/events', '/', '/about', '/contact', '/report-abuse'];
@@ -504,7 +335,7 @@ export const AuthProvider = ({ children }) => {
     } else {
       toast.info('Sessão encerrada');
     }
-  }, [navigate, silentLogout]);
+  }, [navigate, clearAuth]);
 
   // Verificar se o usuário tem determinada permissão
   const hasPermission = useCallback((requiredRole) => {
