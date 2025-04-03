@@ -29,13 +29,12 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("Erro capturado pelo ErrorBoundary:", error, errorInfo)
     this.setState({ errorInfo })
-    
-    // Você pode adicionar telemetria ou logs de erro aqui
   }
 
   handleRefresh = () => {
-    // Limpar erros persistentes
+    // Limpar qualquer estado persistente que possa causar problemas
     localStorage.removeItem('last_error')
+    localStorage.removeItem('token')
     
     // Recarregar a página
     window.location.reload()
@@ -68,59 +67,65 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Tratamento de eventos globais não capturados
-window.addEventListener('error', (event) => {
-  console.error('Erro global não tratado:', event.error)
-})
-
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('Promessa rejeitada não tratada:', event.reason)
-})
-
-// Otimização para aplicações PWA - precarregamento de páginas
-document.addEventListener('DOMContentLoaded', () => {
-  // Precarregar rotas principais após o carregamento inicial
-  if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(() => {
-      import('./pages/HomePage')
-      import('./pages/auth/LoginPage')
-      import('./pages/auth/RegisterPage')
-    })
-  }
-})
-
-// Inicialização segura - para evitar erros durante a carga inicial
+// Função para iniciar a aplicação React
 const safeInitialize = () => {
   try {
-    // Importação dinâmica - para evitar problemas de carregamento com o disableMixpanel
-    import('./utils/disableMixpanel')
-      .then(() => console.log('Sistema de proteção contra tracking carregado'))
-      .catch(err => console.error('Erro ao carregar proteção:', err));
-      
-    // Iniciar a aplicação React  
-    import('./startApp')
-      .then(module => module.default())
-      .catch(err => console.error('Erro ao iniciar aplicação:', err));
+    // Limpar tokens e dados de autenticação antigos
+    localStorage.removeItem('token')
+    
+    // Iniciar a aplicação com tratamento de erros
+    const root = document.getElementById('root');
+    if (!root) {
+      console.error('Elemento root não encontrado');
+      return;
+    }
+    
+    const reactRoot = ReactDOM.createRoot(root);
+    reactRoot.render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <BrowserRouter>
+            <Suspense fallback={<LoadingSpinner fullScreen message="Carregando aplicação..." />}>
+              <AuthProvider>
+                <App />
+                <ToastContainer
+                  position="top-right"
+                  autoClose={4000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="light"
+                />
+              </AuthProvider>
+            </Suspense>
+          </BrowserRouter>
+        </ErrorBoundary>
+      </React.StrictMode>
+    );
   } catch (e) {
     console.error('Erro durante inicialização:', e);
-    
-    // Fallback para caso de falha
-    setTimeout(() => {
-      const root = document.getElementById('root');
-      if (root) {
-        root.innerHTML = `
-          <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
-            <h2>Erro durante carregamento</h2>
-            <p>Ocorreu um problema ao iniciar a aplicação.</p>
-            <button onclick="window.location.reload()" style="padding: 10px 15px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">
-              Tentar Novamente
-            </button>
-          </div>
-        `;
-      }
-    }, 1000);
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.innerHTML = `
+        <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+          <h2>Erro durante carregamento</h2>
+          <p>Ocorreu um problema ao iniciar a aplicação.</p>
+          <button onclick="window.location.reload()" style="padding: 10px 15px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Tentar Novamente
+          </button>
+        </div>
+      `;
+    }
   }
 };
 
-// Executar inicialização
-safeInitialize();
+// Executar inicialização quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', safeInitialize);
+} else {
+  safeInitialize();
+}

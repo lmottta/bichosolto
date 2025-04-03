@@ -60,7 +60,6 @@ export default defineConfig(({ command, mode }) => {
         'react-dom',
         'react-router-dom',
         'axios',
-        'jwt-decode',
         'react-toastify',
       ],
       // Evita que o Vite tente processar estes pacotes

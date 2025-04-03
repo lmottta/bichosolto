@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     
+    // Usar SimpleAuth como método de autenticação
     const authValue = `Bearer SimpleAuth_${userData.id}_${userData.email}`;
     axios.defaults.headers.common['Authorization'] = authValue;
     api.defaults.headers.common['Authorization'] = authValue;
@@ -56,54 +57,40 @@ export const AuthProvider = ({ children }) => {
 
   // Verificar se o usuário já está autenticado ao carregar a página
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthStatus = () => {
       try {
-        // Verificar se há dados de autenticação salvos
+        setIsLoading(true);
+        
+        // Remover tokens antigos
+        localStorage.removeItem('token');
+        
+        // Verificar se há dados de usuário salvos
         const savedUser = safeGetItem(USER_KEY);
-        const isUserAuth = safeGetItem(AUTH_KEY);
+        const savedAuthStatus = safeGetItem(AUTH_KEY);
         
-        console.log('Verificando autenticação:', isUserAuth ? 'autenticado' : 'não autenticado');
-        
-        if (!savedUser || !isUserAuth) {
-          console.log('Dados de autenticação não encontrados');
-          setIsLoading(false);
-          return;
-        }
-        
-        // Configurar a autenticação nas requisições
-        setupAxiosAuth(savedUser);
-        
-        // Verificar com o servidor se a sessão ainda é válida
-        try {
-          const response = await api.get('/api/users/me');
+        if (savedUser && savedAuthStatus) {
+          // Configurar cliente axios
+          setupAxiosAuth(savedUser);
           
-          // Verificar se a resposta tem dados válidos
-          if (response && response.data) {
-            setUser(response.data);
-            setIsAuthenticated(true);
-            // Atualizar os dados salvos caso o servidor tenha retornado dados atualizados
-            safeSetItem(USER_KEY, response.data);
-            console.log('Autenticação restaurada com sucesso');
-          } else {
-            console.warn('Resposta válida, mas sem dados do usuário');
-            clearAuth();
-          }
-        } catch (error) {
-          console.error('Erro ao verificar autenticação:', error);
+          // Atualizar estado
+          setUser(savedUser);
+          setIsAuthenticated(true);
+        } else {
+          // Limpar autenticação se não há dados completos
           clearAuth();
         }
-      } catch (error) {
-        console.error('Erro geral na verificação de autenticação:', error);
+      } catch (e) {
+        console.error('Erro ao verificar autenticação:', e);
         clearAuth();
       } finally {
         setIsLoading(false);
       }
     };
     
-    checkAuth();
-  }, [setupAxiosAuth, clearAuth]);
+    checkAuthStatus();
+  }, [setupAxiosAuth]);
 
-  // Função para limpar dados de autenticação
+  // Limpar dados de autenticação
   const clearAuth = useCallback(() => {
     try {
       // Remover dados de localStorage
@@ -162,21 +149,11 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Erro ao fazer login:', error);
       
-      let errorMessage = 'Erro ao fazer login';
+      let errorMessage = 'Erro ao fazer login. Tente novamente.';
       
-      // Extrair mensagem de erro específica
-      if (error.response && error.response.data) {
-        if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        } else if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
-        }
-      } else if (error.request) {
-        errorMessage = 'Servidor não respondeu. Verifique se o backend está em execução.';
-      } else if (error.message) {
-        errorMessage = error.message;
+      // Verificar se o erro tem uma resposta do servidor
+      if (error.response) {
+        errorMessage = error.response.data?.message || errorMessage;
       }
       
       toast.error(errorMessage);
@@ -186,49 +163,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Função de registro simplificada
+  // Função de registro com validação de senha
   const register = async (userData) => {
+    // Validar senha (pelo menos 6 caracteres)
+    if (!userData.password || userData.password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return false;
+    }
+    
     try {
       setIsLoading(true);
-      console.log('Iniciando processo de registro');
       
-      // Sanitizar dados antes de enviar
-      const sanitizedData = { ...userData };
-      
-      // Garantir que os valores de telefone e outros campos estão corretos
-      if (typeof sanitizedData.phone === 'string') {
-        sanitizedData.phone = sanitizedData.phone.replace(/\D/g, '');
-      }
-      
-      if (sanitizedData.role === 'ong') {
-        // Sanitização para campos de ONG
-        if (typeof sanitizedData.cnpj === 'string') {
-          sanitizedData.cnpj = sanitizedData.cnpj.replace(/\D/g, '');
-        }
-        
-        if (typeof sanitizedData.responsiblePhone === 'string') {
-          sanitizedData.responsiblePhone = sanitizedData.responsiblePhone.replace(/\D/g, '');
-        }
-        
-        if (typeof sanitizedData.postalCode === 'string') {
-          sanitizedData.postalCode = sanitizedData.postalCode.replace(/\D/g, '');
-        }
-      } else {
-        // Se não for ONG, remover campos específicos
-        delete sanitizedData.cnpj;
-        delete sanitizedData.description;
-        delete sanitizedData.foundingDate;
-        delete sanitizedData.website;
-        delete sanitizedData.socialMedia;
-        delete sanitizedData.responsibleName;
-        delete sanitizedData.responsiblePhone;
-        delete sanitizedData.postalCode;
-      }
-      
-      console.log('Dados sanitizados para registro:', {...sanitizedData, password: '*****'});
-      
-      // Tentar a requisição com timeout 
-      const response = await api.post('/api/auth/register', sanitizedData);
+      const response = await api.post('/api/auth/register', userData);
       
       // Verificar se a resposta contém os dados do usuário
       if (!response || !response.data) {
@@ -236,113 +182,26 @@ export const AuthProvider = ({ children }) => {
       }
       
       // Extrair os dados do usuário com segurança
-      const userData = response.data.user;
+      const responseData = response.data.user;
       
-      // Verificação dos dados do usuário
-      if (!userData) {
+      if (!responseData) {
         throw new Error('Dados do usuário não fornecidos pelo servidor');
       }
       
-      // Salvar dados do usuário e status de autenticação
-      safeSetItem(USER_KEY, userData);
-      safeSetItem(AUTH_KEY, true);
-      
-      // Configurar headers de autenticação
-      setupAxiosAuth(userData);
-      
-      setUser(userData);
-      setIsAuthenticated(true);
-      toast.success('Cadastro realizado com sucesso!');
+      toast.success('Registro realizado com sucesso! Faça login para continuar.');
       
       return true;
     } catch (error) {
-      console.error('Erro ao fazer cadastro:', error);
+      console.error('Erro ao registrar:', error);
       
-      // Extrair mensagem de erro da resposta da API
-      let errorMessage = 'Erro ao fazer cadastro';
+      let errorMessage = 'Erro ao registrar usuário. Tente novamente.';
       
+      // Verificar se o erro tem uma resposta do servidor
       if (error.response) {
-        console.log('Resposta de erro do servidor:', error.response.status, error.response.data);
-        // Se há resposta da API com status de erro
-        if (error.response.data && error.response.data.errors && error.response.data.errors.length > 0) {
-          // Erros de validação (array de erros)
-          errorMessage = error.response.data.errors.map(err => err.msg || err.message).join(', ');
-        } else if (error.response.data && error.response.data.message) {
-          // Mensagem de erro única
-          errorMessage = error.response.data.message;
-        } else if (error.response.data && error.response.data.error) {
-          // Formato alternativo de erro
-          errorMessage = error.response.data.error;
-        } else if (error.response.data && typeof error.response.data === 'string') {
-          // Resposta como string
-          errorMessage = error.response.data;
-        }
-      } else if (error.request) {
-        // Requisição foi feita mas não houve resposta
-        errorMessage = 'Servidor não respondeu. Verifique se o backend está em execução.';
-      } else if (error.message) {
-        // Erro de rede ou outros erros
-        errorMessage = error.message;
+        errorMessage = error.response.data?.message || errorMessage;
       }
       
       toast.error(errorMessage);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Função para atualizar os dados do usuário no contexto
-  const updateUserInfo = async (userData) => {
-    try {
-      setIsLoading(true);
-      
-      // Se já recebemos os dados do usuário atualizados, economizamos uma requisição
-      if (userData) {
-        console.log('Atualizando dados do usuário no contexto:', userData);
-        setUser(userData);
-        safeSetItem(USER_KEY, userData);
-        return true;
-      }
-      
-      // Caso contrário, buscamos os dados atualizados da API
-      console.log('Buscando dados atualizados do usuário na API');
-      const response = await api.get('/api/users/me');
-      
-      if (response?.data) {
-        console.log('Dados do usuário buscados da API:', response.data);
-        setUser(response.data);
-        safeSetItem(USER_KEY, response.data);
-        // Se os dados foram carregados com sucesso, garantimos que o usuário está autenticado
-        setIsAuthenticated(true);
-        safeSetItem(AUTH_KEY, true);
-        return true;
-      } else {
-        console.warn('Resposta sem dados de usuário');
-        return false;
-      }
-    } catch (error) {
-      console.error('Erro ao atualizar informações do usuário:', error);
-      
-      // Se for erro de autorização, fazer logout
-      if (error.response && error.response.status === 401) {
-        // Limpar autenticação
-        clearAuth();
-        toast.error('Sessão expirada. Por favor, faça login novamente.');
-      } else {
-        // Extrair mensagem de erro da resposta da API
-        let errorMessage = 'Erro ao atualizar dados do perfil';
-        
-        if (error.response) {
-          if (error.response.data.message) {
-            errorMessage = error.response.data.message;
-          } else if (error.response.data.error) {
-            errorMessage = error.response.data.error;
-          }
-        }
-        
-        toast.error(errorMessage);
-      }
       return false;
     } finally {
       setIsLoading(false);
@@ -351,41 +210,63 @@ export const AuthProvider = ({ children }) => {
 
   // Função de logout
   const logout = useCallback(() => {
-    // Limpar dados de autenticação
     clearAuth();
-    
-    // Lista de páginas públicas
-    const publicRoutes = ['/donate', '/volunteer', '/animals', '/events', '/', '/about', '/contact', '/report-abuse'];
-    const currentPath = window.location.pathname;
-    
-    // Verificar se está em uma página pública
-    const isPublicPage = publicRoutes.some(route => currentPath.startsWith(route));
-    
-    // Só redirecionar para login se não estiver em uma página pública
-    if (!isPublicPage) {
-      navigate('/login');
-      toast.info('Você saiu da sua conta');
-    } else {
-      toast.info('Sessão encerrada');
-    }
+    navigate('/login');
+    toast.info('Logout realizado com sucesso!');
   }, [navigate, clearAuth]);
 
-  // Verificar se o usuário tem determinada permissão
+  // Verificar se usuário tem permissão para determinada rota/ação
   const hasPermission = useCallback((requiredRole) => {
-    if (!isAuthenticated || !user) return false;
+    if (!user) return false;
+    
+    // Se não há papel requerido, qualquer usuário logado tem permissão
+    if (!requiredRole) return true;
+    
+    // Admin tem acesso a tudo
+    if (user.role === 'admin') return true;
+    
+    // Verificar se o papel do usuário corresponde ao requerido
     return user.role === requiredRole;
-  }, [isAuthenticated, user]);
+  }, [user]);
 
-  const value = {
-    user,
-    isAuthenticated,
-    isLoading,
-    login,
-    register,
-    logout,
-    hasPermission,
-    updateUserInfo
-  };
+  // Função para atualizar as informações do usuário no contexto
+  const updateUserInfo = useCallback((newUserData) => {
+    if (!newUserData) return;
+    
+    try {
+      // Obter os dados atuais do usuário
+      const currentUserData = safeGetItem(USER_KEY);
+      
+      // Mesclar os dados atuais com os novos
+      const updatedUserData = { ...currentUserData, ...newUserData };
+      
+      // Salvar os dados atualizados
+      safeSetItem(USER_KEY, updatedUserData);
+      
+      // Atualizar o estado
+      setUser(updatedUserData);
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar informações do usuário:', error);
+      return false;
+    }
+  }, []);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        isLoading,
+        login,
+        logout,
+        hasPermission,
+        register,
+        updateUserInfo
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
