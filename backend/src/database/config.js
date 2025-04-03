@@ -25,7 +25,7 @@ if (process.env.DATABASE_URL) {
 } else {
   // Configuração manual se não houver DATABASE_URL
   sequelize = new Sequelize(
-    process.env.PG_DATABASE || 'railway',
+    process.env.PG_DATABASE || 'bicho_solto_db',
     process.env.PG_USER || 'postgres',
     process.env.PG_PASSWORD || 'password',
     {
