@@ -65,6 +65,7 @@ export const AuthProvider = ({ children }) => {
         console.log('Verificando autenticação:', isUserAuth ? 'autenticado' : 'não autenticado');
         
         if (!savedUser || !isUserAuth) {
+          console.log('Dados de autenticação não encontrados');
           setIsLoading(false);
           return;
         }
@@ -75,7 +76,9 @@ export const AuthProvider = ({ children }) => {
         // Verificar com o servidor se a sessão ainda é válida
         try {
           const response = await api.get('/api/users/me');
-          if (response?.data) {
+          
+          // Verificar se a resposta tem dados válidos
+          if (response && response.data) {
             setUser(response.data);
             setIsAuthenticated(true);
             // Atualizar os dados salvos caso o servidor tenha retornado dados atualizados
@@ -98,16 +101,30 @@ export const AuthProvider = ({ children }) => {
     };
     
     checkAuth();
-  }, [setupAxiosAuth]);
+  }, [setupAxiosAuth, clearAuth]);
 
   // Função para limpar dados de autenticação
   const clearAuth = useCallback(() => {
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(AUTH_KEY);
-    delete axios.defaults.headers.common['Authorization'];
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
-    setIsAuthenticated(false);
+    try {
+      // Remover dados de localStorage
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(AUTH_KEY);
+      
+      // Limpar headers de autenticação
+      delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
+      
+      // Atualizar estado do contexto
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      console.log('Dados de autenticação limpos com sucesso');
+    } catch (error) {
+      console.error('Erro ao limpar dados de autenticação:', error);
+      // Garantir que o estado do contexto seja atualizado mesmo em caso de erro
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   }, []);
 
   // Função de login simplificada
@@ -116,9 +133,16 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       
       const response = await api.post('/api/auth/login', { email, password });
+      
+      // Verificar se a resposta contém os dados do usuário
+      if (!response || !response.data) {
+        throw new Error('Resposta vazia do servidor');
+      }
+      
+      // Extrair os dados do usuário com segurança
       const userData = response.data.user;
       
-      // Verificação simplificada
+      // Verificação dos dados do usuário
       if (!userData) {
         throw new Error('Dados do usuário não fornecidos pelo servidor');
       }
@@ -141,8 +165,16 @@ export const AuthProvider = ({ children }) => {
       let errorMessage = 'Erro ao fazer login';
       
       // Extrair mensagem de erro específica
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
+      if (error.response && error.response.data) {
+        if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        }
+      } else if (error.request) {
+        errorMessage = 'Servidor não respondeu. Verifique se o backend está em execução.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -196,16 +228,17 @@ export const AuthProvider = ({ children }) => {
       console.log('Dados sanitizados para registro:', {...sanitizedData, password: '*****'});
       
       // Tentar a requisição com timeout 
-      const response = await Promise.race([
-        api.post('/api/auth/register', sanitizedData),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout - servidor não respondeu em tempo hábil')), 20000)
-        )
-      ]);
+      const response = await api.post('/api/auth/register', sanitizedData);
       
+      // Verificar se a resposta contém os dados do usuário
+      if (!response || !response.data) {
+        throw new Error('Resposta vazia do servidor');
+      }
+      
+      // Extrair os dados do usuário com segurança
       const userData = response.data.user;
       
-      // Verificação simplificada
+      // Verificação dos dados do usuário
       if (!userData) {
         throw new Error('Dados do usuário não fornecidos pelo servidor');
       }
@@ -231,16 +264,16 @@ export const AuthProvider = ({ children }) => {
       if (error.response) {
         console.log('Resposta de erro do servidor:', error.response.status, error.response.data);
         // Se há resposta da API com status de erro
-        if (error.response.data.errors && error.response.data.errors.length > 0) {
+        if (error.response.data && error.response.data.errors && error.response.data.errors.length > 0) {
           // Erros de validação (array de erros)
           errorMessage = error.response.data.errors.map(err => err.msg || err.message).join(', ');
-        } else if (error.response.data.message) {
+        } else if (error.response.data && error.response.data.message) {
           // Mensagem de erro única
           errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
+        } else if (error.response.data && error.response.data.error) {
           // Formato alternativo de erro
           errorMessage = error.response.data.error;
-        } else if (typeof error.response.data === 'string') {
+        } else if (error.response.data && typeof error.response.data === 'string') {
           // Resposta como string
           errorMessage = error.response.data;
         }
