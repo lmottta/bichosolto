@@ -1,13 +1,26 @@
 import axios from 'axios';
 
+// Determinar a URL base da API
+const getApiBaseUrl = () => {
+  // Em produção, buscamos da variável de ambiente ou usamos o caminho relativo
+  if (import.meta.env.PROD) {
+    return import.meta.env.VITE_API_URL || '/api';
+  }
+  // Em desenvolvimento, usamos localhost
+  return import.meta.env.VITE_API_URL || 'http://localhost:5000';
+};
+
 // Criar uma instância do axios com configurações personalizadas
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: getApiBaseUrl(),
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   }
 });
+
+// Log para debug
+console.log(`Axios configurado com baseURL: ${api.defaults.baseURL}`);
 
 // Interceptor para requisições
 api.interceptors.request.use(
@@ -50,7 +63,7 @@ api.interceptors.response.use(
 export default api;
 
 // Configuração global do axios padrão
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+axios.defaults.baseURL = getApiBaseUrl();
 axios.defaults.withCredentials = true;
 
 // Configurar interceptadores globais
