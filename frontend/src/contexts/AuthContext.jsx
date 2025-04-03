@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect, useCallback } from 'react'
+import { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import api from '../api/axios'
@@ -115,11 +115,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Função de login simplificada
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     try {
       setIsLoading(true);
       
       const response = await api.post('/api/auth/login', { email, password });
+      
+      console.log('Resposta completa do backend (login):', response);
+      console.log('Dados da resposta (login):', response.data);
       
       // Verificar se a resposta contém os dados do usuário
       if (!response || !response.data) {
@@ -161,10 +164,10 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate, setupAxiosAuth]);
 
   // Função de registro com validação de senha
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     // Validar senha (pelo menos 6 caracteres)
     if (!userData.password || userData.password.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres');
@@ -176,15 +179,19 @@ export const AuthProvider = ({ children }) => {
       
       const response = await api.post('/api/auth/register', userData);
       
+      console.log('Resposta completa do backend (registro):', response);
+      console.log('Dados da resposta (registro):', response.data);
+      
       // Verificar se a resposta contém os dados do usuário
       if (!response || !response.data) {
         throw new Error('Resposta vazia do servidor');
       }
       
       // Extrair os dados do usuário com segurança
-      const responseData = response.data.user;
+      const responseData = response.data; // A resposta direta já contém o usuário e token
+      const registeredUser = responseData.user;
       
-      if (!responseData) {
+      if (!registeredUser) {
         throw new Error('Dados do usuário não fornecidos pelo servidor');
       }
       
@@ -206,7 +213,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Função de logout
   const logout = useCallback(() => {
@@ -253,18 +260,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Memorizar o valor do contexto para evitar re-renders desnecessários
+  const contextValue = useMemo(() => ({    
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    logout,
+    hasPermission,
+    register,
+    updateUserInfo
+  }), [user, isAuthenticated, isLoading, login, logout, hasPermission, register, updateUserInfo]);
+
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated,
-        isLoading,
-        login,
-        logout,
-        hasPermission,
-        register,
-        updateUserInfo
-      }}
+      value={contextValue}
     >
       {children}
     </AuthContext.Provider>

@@ -34,6 +34,8 @@ router.post(
   validateRequest,
   async (req, res) => {
     try {
+      console.log('--- Iniciando Registro ---');
+      console.log('Dados recebidos no corpo da requisição:', req.body);
       const { email, password, role } = req.body;
 
       // Verificar se o email já está em uso
@@ -51,6 +53,7 @@ router.post(
 
       // Adicionar campos específicos de acordo com o tipo de usuário
       let userData = { ...req.body };
+      console.log('Dados do usuário para criação:', userData);
 
       // Garantir que só administradores podem criar outros administradores
       if (role === 'admin') {
@@ -80,6 +83,7 @@ router.post(
 
       // Criar o usuário
       const user = await User.create(userData);
+      console.log('Usuário criado no banco de dados:', user ? user.toJSON() : 'Falha ao criar usuário');
 
       // Retornar usuário criado (sem a senha)
       const userResponse = {
@@ -106,15 +110,24 @@ router.post(
           isVerified: user.isVerified
         })
       };
+      console.log('Objeto userResponse a ser enviado:', userResponse);
 
       // Criar token SimpleAuth
       const simpleToken = `SimpleAuth_${user.id}_${user.email}`;
+      console.log('Token SimpleAuth criado:', simpleToken);
+
+      // Garantir que userResponse e token são válidos antes de enviar
+      if (!userResponse || !simpleToken) {
+        console.error('ERRO CRÍTICO: userResponse ou simpleToken inválidos antes de enviar resposta.');
+        return res.status(500).json({ message: 'Erro interno ao preparar resposta de registro.' });
+      }
 
       res.status(201).json({ 
         message: 'Usuário registrado com sucesso',
         user: userResponse,
         token: simpleToken
       });
+      console.log('--- Registro Concluído com Sucesso ---');
     } catch (error) {
       console.error('Erro ao registrar usuário:', error);
       res.status(500).json({ message: 'Erro ao registrar usuário' });
@@ -132,10 +145,13 @@ router.post(
   validateRequest,
   async (req, res) => {
     try {
+      console.log('--- Iniciando Login ---');
+      console.log('Dados recebidos no corpo da requisição:', req.body);
       const { email, password } = req.body;
 
       // Buscar usuário pelo email
       const user = await User.findOne({ where: { email } });
+      console.log('Usuário encontrado no banco:', user ? user.toJSON() : 'Usuário não encontrado');
       if (!user) {
         return res.status(401).json({ message: 'Credenciais inválidas' });
       }
@@ -179,8 +195,16 @@ router.post(
           isVerified: user.isVerified
         })
       };
+      console.log('Objeto userResponse a ser enviado:', userResponse);
+
+      // Garantir que userResponse e token são válidos antes de enviar
+      if (!userResponse || !simpleToken) {
+        console.error('ERRO CRÍTICO: userResponse ou simpleToken inválidos antes de enviar resposta.');
+        return res.status(500).json({ message: 'Erro interno ao preparar resposta de login.' });
+      }
 
       res.json({ user: userResponse, token: simpleToken });
+      console.log('--- Login Concluído com Sucesso ---');
     } catch (error) {
       console.error('Erro ao fazer login:', error);
       res.status(500).json({ message: 'Erro ao fazer login' });

@@ -27,12 +27,6 @@ const api = axios.create({
 // Interceptor para logging de requisições e adicionar token se disponível
 api.interceptors.request.use(
   (config) => {
-    // Verificar se temos o token e adicionar ao cabeçalho, garantindo que está sempre atualizado
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    
     // Log somente em ambiente de desenvolvimento
     if (import.meta.env.DEV) {
       console.log(`Enviando requisição para: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
@@ -84,17 +78,8 @@ api.interceptors.response.use(
     
     // Verificar se é erro 401 (não autorizado)
     if (error.response && error.response.status === 401) {
-      // Se for um erro de token inválido ou expirado em uma rota protegida
-      // e não for a rota de login ou refresh token
-      if (!config.url.includes('/auth/login') && !config.url.includes('/auth/refresh')) {
-        // Limpar o token inválido
-        localStorage.removeItem('token');
-        
-        // Evento personalizado para notificar o logout
-        window.dispatchEvent(new CustomEvent('token-expired'));
-        
-        console.warn('Token expirou ou é inválido. Redirecionando para login.');
-      }
+      // A lógica de tratamento de 401 agora está no AuthContext
+      console.warn('Erro 401 (Não autorizado) recebido.');
     }
     
     // Número de tentativas restantes
@@ -171,10 +156,5 @@ api.clearCache = (url = null) => {
     responseCache.clear();
   }
 };
-
-// Escutar evento de expiração de token para limpar a autorização
-window.addEventListener('token-expired', () => {
-  delete api.defaults.headers.common['Authorization'];
-});
 
 export default api; 
