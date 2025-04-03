@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import { AuthProvider } from './contexts/AuthContext'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -69,70 +70,72 @@ const AuthRoute = ({ children }) => {
 
 function App() {
   return (
-    <Routes>
-      {/* Rotas públicas com layout principal */}
-      <Route element={<MainLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={
-          <AuthRoute>
-            <LoginPage />
-          </AuthRoute>
-        } />
-        <Route path="/register" element={
-          <AuthRoute>
-            <RegisterPage />
-          </AuthRoute>
-        } />
-        <Route path="/animals" element={<AnimalsListPage />} />
-        <Route path="/animals/:id" element={<AnimalDetailsPage />} />
-        <Route path="/events" element={<EventsListPage />} />
-        <Route path="/events/:id" element={<EventDetailsPage />} />
-        <Route path="/report-abuse" element={<ReportAbusePage />} />
-        <Route path="/donate" element={<DonatePage />} />
-        <Route path="/volunteer" element={<VolunteerPage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/contact" element={<ContactPage />} />
+    <AuthProvider>
+      <Routes>
+        {/* Rotas públicas com layout principal */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={
+            <AuthRoute>
+              <LoginPage />
+            </AuthRoute>
+          } />
+          <Route path="/register" element={
+            <AuthRoute>
+              <RegisterPage />
+            </AuthRoute>
+          } />
+          <Route path="/animals" element={<AnimalsListPage />} />
+          <Route path="/animals/:id" element={<AnimalDetailsPage />} />
+          <Route path="/events" element={<EventsListPage />} />
+          <Route path="/events/:id" element={<EventDetailsPage />} />
+          <Route path="/report-abuse" element={<ReportAbusePage />} />
+          <Route path="/donate" element={<DonatePage />} />
+          <Route path="/volunteer" element={<VolunteerPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          
+          {/* Rotas protegidas para usuários comuns */}
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <UserProfilePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-donations" element={
+            <ProtectedRoute>
+              <UserDonationsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-reports" element={
+            <ProtectedRoute>
+              <UserReportsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-volunteering" element={
+            <ProtectedRoute>
+              <UserVolunteeringPage />
+            </ProtectedRoute>
+          } />
+        </Route>
         
-        {/* Rotas protegidas para usuários comuns */}
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <UserProfilePage />
+        {/* Rotas de administração */}
+        <Route path="/admin" element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminLayout />
           </ProtectedRoute>
-        } />
-        <Route path="/my-donations" element={
-          <ProtectedRoute>
-            <UserDonationsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/my-reports" element={
-          <ProtectedRoute>
-            <UserReportsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/my-volunteering" element={
-          <ProtectedRoute>
-            <UserVolunteeringPage />
-          </ProtectedRoute>
-        } />
-      </Route>
-      
-      {/* Rotas de administração */}
-      <Route path="/admin" element={
-        <ProtectedRoute requiredRole="admin">
-          <AdminLayout />
-        </ProtectedRoute>
-      }>
-        <Route index element={<AdminDashboardPage />} />
-        <Route path="reports" element={<AdminReportsPage />} />
-        <Route path="animals" element={<AdminAnimalsPage />} />
-        <Route path="events" element={<AdminEventsPage />} />
-        <Route path="donations" element={<AdminDonationsPage />} />
-        <Route path="volunteers" element={<AdminVolunteersPage />} />
-      </Route>
-      
-      {/* Rota 404 */}
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        }>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="reports" element={<AdminReportsPage />} />
+          <Route path="animals" element={<AdminAnimalsPage />} />
+          <Route path="events" element={<AdminEventsPage />} />
+          <Route path="donations" element={<AdminDonationsPage />} />
+          <Route path="volunteers" element={<AdminVolunteersPage />} />
+        </Route>
+        
+        {/* Rota 404 */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </AuthProvider>
   )
 }
 

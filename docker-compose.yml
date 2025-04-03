@@ -12,8 +12,10 @@ services:
       - "3000:3000"
     environment:
       - VITE_API_URL=http://localhost:5000
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - bicho-solto-network
 
@@ -42,10 +44,19 @@ services:
       - JWT_EXPIRES_IN=7d
       - UPLOAD_DIR=uploads
       - MAX_FILE_SIZE=5242880
+      - CORS_ORIGIN=http://localhost:3000
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: always
     networks:
       - bicho-solto-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:5000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Serviço do PostgreSQL
   postgres:
@@ -62,6 +73,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - bicho-solto-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # Serviço de administração do PostgreSQL (opcional)
   pgadmin:

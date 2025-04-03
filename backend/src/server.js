@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { sequelize } = require('./database/config');
 const path = require('path');
+const { DataTypes } = require('sequelize');
 
 // Importante: Importando os modelos para garantir que são carregados antes da sincronização
 const models = require('./models');
@@ -12,10 +13,24 @@ const routes = require('./routes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Configuração CORS aprimorada
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Log para depuração de requisições
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Configuração para servir arquivos estáticos de upload
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
@@ -26,6 +41,57 @@ app.use('/api', routes);
 // Rota de teste para verificar se o servidor está funcionando
 app.get('/', (req, res) => {
   res.json({ message: 'Animal Rescue Hub API está funcionando!' });
+});
+
+// Adicionar rota de diagnóstico para verificar a conexão com banco de dados
+app.get('/api/diagnostico', async (req, res) => {
+  try {
+    const dbStatus = await sequelize.authenticate();
+    
+    // Verificar se podemos criar tabelas
+    const testModel = sequelize.define('TestDiagnostico', {
+      test: DataTypes.STRING
+    }, { timestamps: false });
+    
+    try {
+      await testModel.sync({ force: true });
+      await testModel.drop();
+      console.log('Diagnóstico: teste de criação de tabela bem-sucedido');
+    } catch (tableError) {
+      console.error('Diagnóstico: erro ao criar tabela de teste:', tableError);
+      return res.status(500).json({
+        status: 'error',
+        database: 'connected',
+        tablesAccess: false,
+        error: tableError.message
+      });
+    }
+    
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      tablesAccess: true,
+      dbDetails: {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER
+      }
+    });
+  } catch (error) {
+    console.error('Diagnóstico: erro de conexão com banco de dados:', error);
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      error: error.message,
+      dbDetails: {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER
+      }
+    });
+  }
 });
 
 // Inicialização do servidor

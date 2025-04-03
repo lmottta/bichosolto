@@ -1,8 +1,8 @@
 import { createContext, useState, useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import jwtDecode from 'jwt-decode'
 import { toast } from 'react-toastify'
+import api, { axios } from '../config/axios' // Importando nossa instância personalizada
 
 const AuthContext = createContext()
 
@@ -31,11 +31,10 @@ export const AuthProvider = ({ children }) => {
             return
           }
           
-          // Configurar o token no cabeçalho das requisições
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          // Não precisamos configurar o token aqui, pois o interceptor do axios já faz isso
           
           // Obter informações do usuário
-          const response = await axios.get('/api/users/me')
+          const response = await api.get('/api/users/me')
           setUser(response.data)
           setIsAuthenticated(true)
         } catch (error) {
@@ -54,14 +53,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setIsLoading(true)
-      const response = await axios.post('/api/auth/login', { email, password })
+      const response = await api.post('/api/auth/login', { email, password })
       const { token, user } = response.data
       
       // Salvar token no localStorage
       localStorage.setItem('token', token)
-      
-      // Configurar o token no cabeçalho das requisições
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       
       setUser(user)
       setIsAuthenticated(true)
@@ -81,14 +77,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setIsLoading(true)
-      const response = await axios.post('/api/auth/register', userData)
+      console.log('Enviando dados de registro:', userData);
+      const response = await api.post('/api/auth/register', userData)
       const { token, user } = response.data
       
       // Salvar token no localStorage
       localStorage.setItem('token', token)
-      
-      // Configurar o token no cabeçalho das requisições
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       
       setUser(user)
       setIsAuthenticated(true)
@@ -100,8 +94,10 @@ export const AuthProvider = ({ children }) => {
       
       // Extrair mensagem de erro da resposta da API
       let errorMessage = 'Erro ao fazer cadastro';
+      let errorDetails = null;
       
       if (error.response) {
+        console.log('Detalhes do erro de registro:', error.response.data);
         // Se há resposta da API com status de erro
         if (error.response.data.errors && error.response.data.errors.length > 0) {
           // Erros de validação (array de erros)
@@ -116,9 +112,17 @@ export const AuthProvider = ({ children }) => {
           // Resposta como string
           errorMessage = error.response.data;
         }
+        
+        if (error.response.data.details) {
+          errorDetails = error.response.data.details;
+        }
       } else if (error.message) {
         // Erro de rede ou outros erros
         errorMessage = error.message;
+      }
+      
+      if (errorDetails) {
+        console.error('Detalhes adicionais do erro:', errorDetails);
       }
       
       toast.error(errorMessage)
@@ -141,7 +145,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       // Caso contrário, buscamos os dados atualizados da API
-      const response = await axios.get('/api/users/me')
+      const response = await api.get('/api/users/me')
       console.log('Dados do usuário buscados da API:', response.data);
       setUser(response.data)
       return true
@@ -169,7 +173,7 @@ export const AuthProvider = ({ children }) => {
   // Função de logout
   const logout = () => {
     localStorage.removeItem('token')
-    delete axios.defaults.headers.common['Authorization']
+    // Não precisamos remover o token explicitamente pois o interceptor cuida disso
     setUser(null)
     setIsAuthenticated(false)
     

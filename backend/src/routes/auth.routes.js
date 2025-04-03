@@ -140,7 +140,37 @@ router.post(
       });
     } catch (error) {
       console.error('Erro ao registrar usuário:', error);
-      res.status(500).json({ message: 'Erro ao registrar usuário' });
+      
+      // Melhorar a resposta com detalhes do erro para facilitar o diagnóstico
+      let errorMessage = 'Erro ao registrar usuário';
+      let errorDetails = null;
+      
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        const field = error.errors[0].path;
+        errorMessage = `O ${field} fornecido já está em uso`;
+      } else if (error.name === 'SequelizeValidationError') {
+        errorMessage = 'Erro de validação: ' + error.errors.map(err => err.message).join(', ');
+      } else if (error.name === 'SequelizeConnectionError' || error.name === 'SequelizeConnectionRefusedError') {
+        errorMessage = 'Erro de conexão com o banco de dados';
+        errorDetails = {
+          host: process.env.DB_HOST,
+          port: process.env.DB_PORT,
+          database: process.env.DB_NAME,
+          message: error.message
+        };
+      }
+      
+      console.error('Detalhes do erro:', {
+        errorName: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      res.status(500).json({ 
+        message: errorMessage,
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        details: errorDetails
+      });
     }
   }
 );
