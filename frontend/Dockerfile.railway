@@ -7,6 +7,8 @@ COPY package*.json ./
 
 # Instalar dependências com npm explícito
 RUN npm install
+# Garantir que terser esteja instalado
+RUN npm install terser --save-dev
 
 # Copiar o restante dos arquivos do projeto
 COPY . .

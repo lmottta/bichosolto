@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       // Otimizações para produção
-      minify: 'terser',
+      minify: 'esbuild',
       sourcemap: false,
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
