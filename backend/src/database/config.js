@@ -37,4 +37,5 @@ if (process.env.DATABASE_URL) {
   );
 }
 
-module.exports = sequelize;
+// Exportamos tanto a instância como um objeto com a propriedade sequelize
+module.exports = { sequelize, Sequelize };
