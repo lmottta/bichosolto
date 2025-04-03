@@ -161,7 +161,8 @@ export const AuthProvider = ({ children }) => {
         
         // Verificar se o backend está em execução
         try {
-          const testConnection = await fetch('http://localhost:5001/api');
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+          const testConnection = await fetch(`${API_URL}/api`);
           console.log('Teste de conexão com backend:', testConnection.status);
         } catch (connError) {
           console.error('Backend não está acessível:', connError);
