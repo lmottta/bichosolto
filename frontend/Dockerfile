@@ -1,28 +1,32 @@
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Instalar dependências
-COPY package.json package-lock.json ./
-RUN npm ci
+# Copiar arquivos de configuração do npm
+COPY package*.json ./
 
-# Copiar código fonte
+# Instalar dependências 
+RUN npm install
+
+# Copiar o restante dos arquivos do projeto
 COPY . .
 
-# Construir aplicação
+# Construir a aplicação para produção
 RUN npm run build
 
-# Imagem final com Nginx para servir os arquivos estáticos
-FROM nginx:alpine
+# Segunda etapa: servir a aplicação com servidor estático
+FROM node:18-alpine
 
-# Copiar configuração do nginx
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Copiar os arquivos de build
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Instalar serve para servir conteúdo estático
+RUN npm install -g serve
 
-# Expor porta
-EXPOSE 80
+# Copiar os arquivos de build da etapa anterior
+COPY --from=builder /app/dist /app/dist
 
-# Iniciar nginx
-CMD ["nginx", "-g", "daemon off;"] 
+# Expor a porta que o servidor vai usar
+EXPOSE 3000
+
+# Comando para iniciar o servidor
+CMD ["serve", "-s", "dist", "-l", "3000"] 
