@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const response = await api.post('/api/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
       
       console.log('Resposta completa do backend (login):', response);
       console.log('Dados da resposta (login):', response.data);
@@ -177,7 +177,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const response = await api.post('/api/auth/register', userData);
+      const response = await api.post('/auth/register', userData);
       
       console.log('Resposta completa do backend (registro):', response);
       console.log('Dados da resposta (registro):', response.data);

@@ -15,7 +15,7 @@ console.log('API URL utilizada:', API_URL);
 
 // Criando uma instância do axios com configurações base
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/api`,
   timeout: 10000, // 10 segundos - reduzido para melhorar a experiência do usuário
   headers: {
     'Content-Type': 'application/json'
