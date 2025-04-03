@@ -13,25 +13,32 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [lastTokenCheck, setLastTokenCheck] = useState(0)
   const navigate = useNavigate()
+
+  // Função para verificar se o token é válido
+  const isTokenValid = (token) => {
+    if (!token) return false
+    
+    try {
+      // Verificar se o token expirou
+      const decodedToken = jwtDecode(token)
+      const currentTime = Date.now() / 1000
+      
+      return decodedToken.exp > currentTime
+    } catch (error) {
+      console.error('Erro ao decodificar token:', error)
+      return false
+    }
+  }
 
   // Verificar se o usuário já está autenticado ao carregar a página
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token')
       
-      if (token) {
+      if (token && isTokenValid(token)) {
         try {
-          // Verificar se o token expirou
-          const decodedToken = jwtDecode(token)
-          const currentTime = Date.now() / 1000
-          
-          if (decodedToken.exp < currentTime) {
-            // Token expirado
-            logout()
-            return
-          }
-          
           // Configurar o token no cabeçalho das requisições
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
@@ -42,8 +49,14 @@ export const AuthProvider = ({ children }) => {
           setIsAuthenticated(true)
         } catch (error) {
           console.error('Erro ao verificar autenticação:', error)
-          logout()
+          if (error.response && error.response.status === 401) {
+            // Token inválido ou expirado
+            logout()
+          }
         }
+      } else if (token) {
+        // Token existe mas é inválido
+        logout()
       }
       
       setIsLoading(false)
@@ -52,12 +65,35 @@ export const AuthProvider = ({ children }) => {
     checkAuth()
   }, [])
 
+  // Verificar a validade do token periodicamente (a cada 5 minutos)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const token = localStorage.getItem('token')
+      const now = Date.now()
+      
+      // Só faz a verificação se o token existir e se passou pelo menos 5 minutos desde a última verificação
+      if (token && now - lastTokenCheck > 5 * 60 * 1000) {
+        if (!isTokenValid(token)) {
+          console.log('Token expirou durante a sessão ativa')
+          logout()
+        }
+        setLastTokenCheck(now)
+      }
+    }, 60 * 1000) // Verificar a cada minuto
+    
+    return () => clearInterval(interval)
+  }, [lastTokenCheck])
+
   // Função de login
   const login = async (email, password) => {
     try {
       setIsLoading(true)
       const response = await api.post('/api/auth/login', { email, password })
       const { token, user } = response.data
+      
+      if (!token) {
+        throw new Error('Token não fornecido pelo servidor')
+      }
       
       // Salvar token no localStorage
       localStorage.setItem('token', token)
@@ -68,6 +104,7 @@ export const AuthProvider = ({ children }) => {
       
       setUser(user)
       setIsAuthenticated(true)
+      setLastTokenCheck(Date.now())
       toast.success('Login realizado com sucesso!')
       
       return true
@@ -227,18 +264,24 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Erro ao atualizar informações do usuário:', error)
       
-      // Extrair mensagem de erro da resposta da API
-      let errorMessage = 'Erro ao atualizar dados do perfil';
-      
-      if (error.response) {
-        if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
+      // Se for erro de autorização, fazer logout
+      if (error.response && error.response.status === 401) {
+        logout()
+        toast.error('Sessão expirada. Por favor, faça login novamente.')
+      } else {
+        // Extrair mensagem de erro da resposta da API
+        let errorMessage = 'Erro ao atualizar dados do perfil';
+        
+        if (error.response) {
+          if (error.response.data.message) {
+            errorMessage = error.response.data.message;
+          } else if (error.response.data.error) {
+            errorMessage = error.response.data.error;
+          }
         }
+        
+        toast.error(errorMessage)
       }
-      
-      toast.error(errorMessage)
       return false
     } finally {
       setIsLoading(false)
