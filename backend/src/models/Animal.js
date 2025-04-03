@@ -84,7 +84,6 @@ const Animal = sequelize.define('Animal', {
   userId: {
     type: DataTypes.UUID,
     allowNull: false,
-    field: 'user_id',
     references: {
       model: 'users',
       key: 'id',
@@ -93,7 +92,6 @@ const Animal = sequelize.define('Animal', {
   adoptedBy: {
     type: DataTypes.UUID,
     allowNull: true,
-    field: 'adopted_by',
     references: {
       model: 'users',
       key: 'id',
@@ -116,6 +114,16 @@ const Animal = sequelize.define('Animal', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  }
 });
 
 module.exports = Animal;

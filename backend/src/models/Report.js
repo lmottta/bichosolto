@@ -30,13 +30,11 @@ const Report = sequelize.define('Report', {
   animalType: {
     type: DataTypes.STRING,
     allowNull: false,
-    field: 'animal_type',
   },
   urgencyLevel: {
     type: DataTypes.ENUM('low', 'medium', 'high', 'critical'),
     defaultValue: 'medium',
     allowNull: false,
-    field: 'urgency_level',
   },
   status: {
     type: DataTypes.ENUM('pending', 'investigating', 'resolved', 'closed'),
@@ -51,7 +49,6 @@ const Report = sequelize.define('Report', {
   userId: {
     type: DataTypes.UUID,
     allowNull: true,
-    field: 'user_id',
     references: {
       model: 'users',
       key: 'id',
@@ -60,7 +57,6 @@ const Report = sequelize.define('Report', {
   assignedToId: {
     type: DataTypes.UUID,
     allowNull: true,
-    field: 'assigned_to_id',
     references: {
       model: 'users',
       key: 'id',
@@ -69,8 +65,17 @@ const Report = sequelize.define('Report', {
   resolvedAt: {
     type: DataTypes.DATE,
     allowNull: true,
-    field: 'resolved_at',
   },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  }
 });
 
 module.exports = Report;

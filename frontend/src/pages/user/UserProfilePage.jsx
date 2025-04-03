@@ -47,7 +47,7 @@ const UserProfilePage = () => {
           setImagePreview(user.profileImage);
         } else {
           // Caso contrário, usar a URL base da API (definida no env ou usar localhost como fallback)
-          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
           setImagePreview(`${apiBaseUrl}${user.profileImage}`);
         }
       }
@@ -249,7 +249,7 @@ const UserProfilePage = () => {
                           e.target.onerror = null;
                           // Tentar URL alternativa se a principal falhar
                           if (user.profileImage) {
-                            const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                            const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
                             e.target.src = `${apiBaseUrl}${user.profileImage}`;
                           } else {
                             // Fallback para ícone padrão em caso de erro

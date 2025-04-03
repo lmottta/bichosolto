@@ -181,11 +181,28 @@ const RegisterPage = () => {
       // Formatar dados antes de enviar
       const formattedData = {
         ...userData,
-        phone: userData.phone.replace(/\D/g, ''),
-        cnpj: userData.cnpj ? userData.cnpj.replace(/\D/g, '') : '',
-        responsiblePhone: userData.responsiblePhone ? userData.responsiblePhone.replace(/\D/g, '') : '',
-        postalCode: userData.postalCode ? userData.postalCode.replace(/\D/g, '') : ''
+        phone: userData.phone ? userData.phone.replace(/\D/g, '') : '',
+        cnpj: userData.cnpj ? userData.cnpj.replace(/\D/g, '') : undefined,
+        responsiblePhone: userData.responsiblePhone ? userData.responsiblePhone.replace(/\D/g, '') : undefined,
+        postalCode: userData.postalCode ? userData.postalCode.replace(/\D/g, '') : undefined
       }
+      
+      // Remover campos undefined ou vazios para ONGs se o usuário for comum
+      if (formattedData.role !== 'ong') {
+        delete formattedData.cnpj
+        delete formattedData.description
+        delete formattedData.foundingDate
+        delete formattedData.website
+        delete formattedData.socialMedia
+        delete formattedData.responsibleName
+        delete formattedData.responsiblePhone
+        delete formattedData.address
+        delete formattedData.city
+        delete formattedData.state
+        delete formattedData.postalCode
+      }
+      
+      console.log('Dados formatados para envio:', formattedData)
       
       const success = await register(formattedData)
       
@@ -273,7 +290,8 @@ const RegisterPage = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="********" 
-                  className={`input input-bordered ${errors.password ? 'input-error' : ''}`} 
+                  className={`input input-bordered ${errors.password ? 'input-error' : ''}`}
+                  autoComplete="new-password"
                 />
                 {errors.password && <span className="text-error text-sm mt-1">{errors.password}</span>}
               </div>
@@ -288,7 +306,8 @@ const RegisterPage = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="********" 
-                  className={`input input-bordered ${errors.confirmPassword ? 'input-error' : ''}`} 
+                  className={`input input-bordered ${errors.confirmPassword ? 'input-error' : ''}`}
+                  autoComplete="new-password"
                 />
                 {errors.confirmPassword && <span className="text-error text-sm mt-1">{errors.confirmPassword}</span>}
               </div>

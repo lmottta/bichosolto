@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Sequelize } = require('sequelize');
 const { sequelize } = require('../database/config');
 const bcrypt = require('bcryptjs');
 
@@ -66,7 +66,7 @@ const User = sequelize.define('User', {
           return profileImage;
         }
         
-        const apiBaseUrl = process.env.API_URL || 'http://localhost:5000';
+        const apiBaseUrl = process.env.API_URL || 'http://localhost:5001';
         
         if (profileImage.startsWith('/')) {
           return `${apiBaseUrl}${profileImage}`;
@@ -117,6 +117,16 @@ const User = sequelize.define('User', {
   isVerified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
   }
 }, {
   hooks: {
@@ -133,6 +143,8 @@ const User = sequelize.define('User', {
       }
     },
   },
+  tableName: 'users',
+  timestamps: true
 });
 
 // Método para verificar senha

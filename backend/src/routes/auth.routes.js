@@ -25,8 +25,7 @@ router.post(
     // Validações condicionais para campos de ONG
     body('cnpj')
       .if(body('role').equals('ong'))
-      .notEmpty().withMessage('CNPJ é obrigatório para ONGs')
-      .isLength({ min: 14, max: 18 }).withMessage('CNPJ inválido'),
+      .notEmpty().withMessage('CNPJ é obrigatório para ONGs'),
     body('description')
       .if(body('role').equals('ong'))
       .notEmpty().withMessage('Descrição é obrigatória para ONGs'),
@@ -47,11 +46,10 @@ router.post(
       .notEmpty().withMessage('Estado é obrigatório para ONGs'),
     body('postalCode')
       .if(body('role').equals('ong'))
-      .notEmpty().withMessage('CEP é obrigatório para ONGs')
-      .matches(/^\d{5}-?\d{3}$/).withMessage('CEP inválido'),
+      .notEmpty().withMessage('CEP é obrigatório para ONGs'),
   ],
   validateRequest,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { 
         name, email, password, role, phone, address, city, state,
@@ -59,6 +57,8 @@ router.post(
         cnpj, description, foundingDate, website, socialMedia,
         responsibleName, responsiblePhone, postalCode
       } = req.body;
+
+      console.log('Dados recebidos para registro:', { ...req.body, password: '******' });
 
       // Verificar se o email já está em uso
       const existingUser = await User.findOne({ where: { email } });
@@ -74,29 +74,39 @@ router.post(
         }
       }
 
-      // Criar novo usuário
-      const user = await User.create({
+      // Preparar dados de usuário
+      const userData = {
         name,
         email,
         password,
         role: role || 'user',
-        phone,
-        address,
-        city,
-        state,
-        // Campos específicos para ONG
-        ...(role === 'ong' && {
-          cnpj,
-          description,
-          foundingDate: foundingDate ? new Date(foundingDate) : null,
-          website,
-          socialMedia,
-          responsibleName,
-          responsiblePhone,
-          postalCode,
-          isVerified: false // ONGs precisam ser verificadas
-        })
-      });
+        phone
+      };
+      
+      // Adicionar campos comuns se fornecidos
+      if (address) userData.address = address;
+      if (city) userData.city = city;
+      if (state) userData.state = state;
+      
+      // Adicionar campos específicos para ONG
+      if (role === 'ong') {
+        if (cnpj) userData.cnpj = cnpj;
+        if (description) userData.description = description;
+        if (foundingDate) userData.foundingDate = new Date(foundingDate);
+        if (website) userData.website = website;
+        if (socialMedia) userData.socialMedia = socialMedia;
+        if (responsibleName) userData.responsibleName = responsibleName;
+        if (responsiblePhone) userData.responsiblePhone = responsiblePhone;
+        if (postalCode) userData.postalCode = postalCode;
+        userData.isVerified = false; // ONGs precisam ser verificadas
+      }
+
+      console.log('Dados formatados para criação do usuário:', { ...userData, password: '******' });
+
+      // Criar novo usuário
+      const user = await User.create(userData);
+
+      console.log('Usuário criado com sucesso:', user.id);
 
       // Gerar token JWT
       const token = jwt.sign(
@@ -131,7 +141,7 @@ router.post(
         })
       };
 
-      res.status(201).json({ 
+      return res.status(201).json({ 
         user: userResponse, 
         token,
         message: role === 'ong' 
@@ -139,38 +149,8 @@ router.post(
           : 'Cadastro realizado com sucesso!'
       });
     } catch (error) {
-      console.error('Erro ao registrar usuário:', error);
-      
-      // Melhorar a resposta com detalhes do erro para facilitar o diagnóstico
-      let errorMessage = 'Erro ao registrar usuário';
-      let errorDetails = null;
-      
-      if (error.name === 'SequelizeUniqueConstraintError') {
-        const field = error.errors[0].path;
-        errorMessage = `O ${field} fornecido já está em uso`;
-      } else if (error.name === 'SequelizeValidationError') {
-        errorMessage = 'Erro de validação: ' + error.errors.map(err => err.message).join(', ');
-      } else if (error.name === 'SequelizeConnectionError' || error.name === 'SequelizeConnectionRefusedError') {
-        errorMessage = 'Erro de conexão com o banco de dados';
-        errorDetails = {
-          host: process.env.DB_HOST,
-          port: process.env.DB_PORT,
-          database: process.env.DB_NAME,
-          message: error.message
-        };
-      }
-      
-      console.error('Detalhes do erro:', {
-        errorName: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-      
-      res.status(500).json({ 
-        message: errorMessage,
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        details: errorDetails
-      });
+      // Propagar o erro para o middleware de tratamento de erros
+      next(error);
     }
   }
 );

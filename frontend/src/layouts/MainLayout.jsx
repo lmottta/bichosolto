@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import logoImg from '../img/logo.png'
@@ -8,6 +8,8 @@ const MainLayout = () => {
   const { isAuthenticated, user, logout } = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   const location = useLocation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   
   // Detectar scroll para mudar o estilo da navbar
   useEffect(() => {
@@ -22,30 +24,71 @@ const MainLayout = () => {
     }
   }, [])
 
+  // Função para fechar o menu móvel
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false)
+  }
+
+  // Função para fechar o menu do usuário
+  const closeUserMenu = () => {
+    setUserMenuOpen(false)
+  }
+
+  // Fechar os menus ao clicar fora deles
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Fechar menu móvel
+      if (!event.target.closest('.mobile-menu-container') && !event.target.closest('.mobile-menu-button')) {
+        setMobileMenuOpen(false)
+      }
+      
+      // Fechar menu do usuário
+      if (!event.target.closest('.user-menu-container') && !event.target.closest('.user-menu-button')) {
+        setUserMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Fechar menus ao mudar de rota
+  useEffect(() => {
+    closeMobileMenu()
+    closeUserMenu()
+  }, [location])
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled ? 'navbar-glass shadow-md' : ''}`}>
         <nav className="navbar container mx-auto px-4">
           <div className="navbar-start">
-            <div className="dropdown">
-              <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
+            <div className="dropdown mobile-menu-container">
+              <button 
+                className="btn btn-ghost lg:hidden mobile-menu-button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
                 </svg>
-              </div>
-              <ul tabIndex={0} className="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
-                <li><Link to="/">Home</Link></li>
-                <li><Link to="/animals">Animais</Link></li>
-                <li><Link to="/report-abuse">Denunciar</Link></li>
-                <li><Link to="/donate">Doar</Link></li>
-                <li><Link to="/volunteer">Voluntariar</Link></li>
-                <li><Link to="/about">Sobre</Link></li>
-              </ul>
+              </button>
+              {mobileMenuOpen && (
+                <ul className="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
+                  <li><Link to="/" onClick={closeMobileMenu}>Home</Link></li>
+                  <li><Link to="/animals" onClick={closeMobileMenu}>Animais</Link></li>
+                  <li><Link to="/report-abuse" onClick={closeMobileMenu}>Denunciar</Link></li>
+                  <li><Link to="/donate" onClick={closeMobileMenu}>Doar</Link></li>
+                  <li><Link to="/volunteer" onClick={closeMobileMenu}>Voluntariar</Link></li>
+                  <li><Link to="/about" onClick={closeMobileMenu}>Sobre</Link></li>
+                </ul>
+              )}
             </div>
             <Link to="/" className="flex items-center">
               <img src={logoImg} alt="Bicho Solto" className="h-16 w-auto mr-2 animate-gentle-pulse" />
-              <span className={`text-xl font-bold ${isScrolled ? 'text-primary' : 'text-primary drop-shadow-text'}`}>Bicho Solto</span>
+              <span className={`text-xl font-bold hidden md:inline ${isScrolled ? 'text-primary' : 'text-primary drop-shadow-text'}`}>Bicho Solto</span>
             </Link>
           </div>
           <div className="navbar-center hidden lg:flex">
@@ -60,47 +103,59 @@ const MainLayout = () => {
           </div>
           <div className="navbar-end">
             {isAuthenticated ? (
-              <div className="dropdown dropdown-end">
-                <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-                  <div className="w-10 rounded-full">
-                    <img 
-                      alt="Avatar do usuário" 
-                      src={user?.profileImageUrl || 'https://daisyui.com/images/stock/photo-1534528741775-53994a69daeb.jpg'} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        // Tentar URL alternativa se a principal falhar
-                        if (user?.profileImage) {
-                          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                          if (!user.profileImage.startsWith('http')) {
-                            e.target.src = `${apiBaseUrl}${user.profileImage}`;
+              <div className="dropdown dropdown-end user-menu-container">
+                <button
+                  className="btn btn-ghost btn-circle avatar user-menu-button"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                >
+                  <div className={`w-10 rounded-full ${!user?.profileImageUrl ? 'ring-2 ring-primary ring-offset-2 ring-offset-base-100 border border-primary/30 bg-base-200 flex items-center justify-center' : ''}`}>
+                    {user?.profileImageUrl ? (
+                      <img 
+                        alt="Avatar do usuário" 
+                        src={user.profileImageUrl} 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          // Tentar URL alternativa se a principal falhar
+                          if (user?.profileImage) {
+                            const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+                            if (!user.profileImage.startsWith('http')) {
+                              e.target.src = `${apiBaseUrl}${user.profileImage}`;
+                            } else {
+                              e.target.src = user.profileImage;
+                            }
                           } else {
-                            e.target.src = user.profileImage;
+                            // Não definir uma imagem padrão, deixar o contorno aparecer
+                            e.target.style.display = 'none';
                           }
-                        } else {
-                          e.target.src = 'https://daisyui.com/images/stock/photo-1534528741775-53994a69daeb.jpg';
-                        }
-                      }}
-                    />
+                        }}
+                      />
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    )}
                   </div>
-                </div>
-                <ul tabIndex={0} className="mt-3 p-2 shadow menu menu-compact dropdown-content bg-base-100 rounded-box w-52 z-50">
-                  <li>
-                    <Link to="/profile" className="justify-between">
-                      Perfil
-                      <span className="badge">Novo</span>
-                    </Link>
-                  </li>
-                  {user?.role === 'admin' && (
-                    <li><Link to="/admin/dashboard">Admin</Link></li>
-                  )}
-                  <li><Link to="/user/reports">Minhas Denúncias</Link></li>
-                  <li><Link to="/user/adoptions">Minhas Adoções</Link></li>
-                  <li><Link to="/user/donations">Minhas Doações</Link></li>
-                  <li><a onClick={logout}>Sair</a></li>
-                </ul>
+                </button>
+                {userMenuOpen && (
+                  <ul className="mt-3 p-2 shadow menu menu-compact dropdown-content bg-base-100 rounded-box w-52 z-50">
+                    <li>
+                      <Link to="/profile" className="justify-between" onClick={closeUserMenu}>
+                        Perfil
+                        <span className="badge">Novo</span>
+                      </Link>
+                    </li>
+                    {user?.role === 'admin' && (
+                      <li><Link to="/admin/dashboard" onClick={closeUserMenu}>Admin</Link></li>
+                    )}
+                    <li><Link to="/user/reports" onClick={closeUserMenu}>Minhas Denúncias</Link></li>
+                    <li><Link to="/user/adoptions" onClick={closeUserMenu}>Minhas Adoções</Link></li>
+                    <li><Link to="/user/donations" onClick={closeUserMenu}>Minhas Doações</Link></li>
+                    <li><a onClick={(e) => { e.preventDefault(); closeUserMenu(); logout(); }}>Sair</a></li>
+                  </ul>
+                )}
               </div>
             ) : (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <Link 
                   to="/login" 
                   className="btn btn-sm btn-primary hover:bg-primary-focus transition-colors duration-200"

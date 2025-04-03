@@ -53,7 +53,7 @@ const Donation = sequelize.define('Donation', {
     type: DataTypes.UUID,
     allowNull: true, // Pode ser anônimo
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id',
     },
   },
@@ -61,7 +61,7 @@ const Donation = sequelize.define('Donation', {
     type: DataTypes.UUID,
     allowNull: false, // ONG ou administrador que recebe a doação
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id',
     },
   },
@@ -69,7 +69,7 @@ const Donation = sequelize.define('Donation', {
     type: DataTypes.UUID,
     allowNull: true, // Pode estar associado a uma campanha específica
     references: {
-      model: 'Events',
+      model: 'events',
       key: 'id',
     },
   },
@@ -93,6 +93,16 @@ const Donation = sequelize.define('Donation', {
     type: DataTypes.STRING,
     allowNull: true, // Comprovante de doação
   },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  }
 });
 
 module.exports = Donation;
