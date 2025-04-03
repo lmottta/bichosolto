@@ -5,6 +5,38 @@
 
 console.log('Desabilitando sistemas de tracking...');
 
+// Função para desabilitar o Mixpanel de forma segura
+export const disableMixpanel = () => {
+  try {
+    // Criar um objeto mixpanel mock que não faz nada
+    window.mixpanel = {
+      track: () => {},
+      identify: () => {},
+      people: {
+        set: () => {}
+      },
+      disable: () => {},
+      init: () => {}
+    };
+
+    // Impedir que o script do Mixpanel seja carregado
+    const disableMixpanelScript = () => {
+      const scripts = document.getElementsByTagName('script');
+      for (let script of scripts) {
+        if (script.src && script.src.includes('mixpanel')) {
+          script.parentNode?.removeChild(script);
+        }
+      }
+    };
+
+    disableMixpanelScript();
+    return true;
+  } catch (error) {
+    console.warn('Erro ao desabilitar Mixpanel:', error);
+    return false;
+  }
+};
+
 // Desabilitar bibliotecas de tracking
 try {
   // Remover quaisquer APIs de tracking do escopo global

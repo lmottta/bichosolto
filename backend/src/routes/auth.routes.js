@@ -85,49 +85,30 @@ router.post(
       const user = await User.create(userData);
       console.log('Usuário criado no banco de dados:', user ? user.toJSON() : 'Falha ao criar usuário');
 
+      if (!user) {
+        console.error('ERRO: Usuário não foi criado no banco de dados');
+        return res.status(500).json({ message: 'Erro ao criar usuário' });
+      }
+
       // Retornar usuário criado (sem a senha)
       const userResponse = {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
-        phone: user.phone,
-        address: user.address,
-        city: user.city,
-        state: user.state,
-        profileImage: user.profileImage,
-        createdAt: user.createdAt,
-        // Incluir campos de ONG se aplicável
-        ...(user.role === 'ong' && {
-          cnpj: user.cnpj,
-          description: user.description,
-          foundingDate: user.foundingDate,
-          website: user.website,
-          socialMedia: user.socialMedia,
-          responsibleName: user.responsibleName,
-          responsiblePhone: user.responsiblePhone,
-          postalCode: user.postalCode,
-          isVerified: user.isVerified
-        })
+        phone: user.phone || null,
+        createdAt: user.createdAt
       };
-      console.log('Objeto userResponse a ser enviado:', userResponse);
 
       // Criar token SimpleAuth
       const simpleToken = `SimpleAuth_${user.id}_${user.email}`;
       console.log('Token SimpleAuth criado:', simpleToken);
 
-      // Garantir que userResponse e token são válidos antes de enviar
-      if (!userResponse || !simpleToken) {
-        console.error('ERRO CRÍTICO: userResponse ou simpleToken inválidos antes de enviar resposta.');
-        return res.status(500).json({ message: 'Erro interno ao preparar resposta de registro.' });
-      }
-
-      res.status(201).json({ 
-        message: 'Usuário registrado com sucesso',
+      // Enviar resposta
+      return res.status(201).json({ 
         user: userResponse,
         token: simpleToken
       });
-      console.log('--- Registro Concluído com Sucesso ---');
     } catch (error) {
       console.error('Erro ao registrar usuário:', error);
       res.status(500).json({ message: 'Erro ao registrar usuário' });
@@ -167,44 +148,25 @@ router.post(
         return res.status(401).json({ message: 'Conta desativada. Entre em contato com o suporte.' });
       }
 
-      // Criar token SimpleAuth
-      const simpleToken = `SimpleAuth_${user.id}_${user.email}`;
-
       // Retornar usuário e token (sem a senha)
       const userResponse = {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
-        phone: user.phone,
-        address: user.address,
-        city: user.city,
-        state: user.state,
-        profileImage: user.profileImage,
-        createdAt: user.createdAt,
-        // Incluir campos de ONG se aplicável
-        ...(user.role === 'ong' && {
-          cnpj: user.cnpj,
-          description: user.description,
-          foundingDate: user.foundingDate,
-          website: user.website,
-          socialMedia: user.socialMedia,
-          responsibleName: user.responsibleName,
-          responsiblePhone: user.responsiblePhone,
-          postalCode: user.postalCode,
-          isVerified: user.isVerified
-        })
+        phone: user.phone || null,
+        createdAt: user.createdAt
       };
-      console.log('Objeto userResponse a ser enviado:', userResponse);
 
-      // Garantir que userResponse e token são válidos antes de enviar
-      if (!userResponse || !simpleToken) {
-        console.error('ERRO CRÍTICO: userResponse ou simpleToken inválidos antes de enviar resposta.');
-        return res.status(500).json({ message: 'Erro interno ao preparar resposta de login.' });
-      }
+      // Criar token SimpleAuth
+      const simpleToken = `SimpleAuth_${user.id}_${user.email}`;
+      console.log('Token SimpleAuth criado:', simpleToken);
 
-      res.json({ user: userResponse, token: simpleToken });
-      console.log('--- Login Concluído com Sucesso ---');
+      // Enviar resposta
+      return res.status(200).json({
+        user: userResponse,
+        token: simpleToken
+      });
     } catch (error) {
       console.error('Erro ao fazer login:', error);
       res.status(500).json({ message: 'Erro ao fazer login' });
