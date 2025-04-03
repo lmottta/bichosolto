@@ -14,5 +14,22 @@ export default defineConfig({
         secure: false
       }
     }
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: false,
+    // Otimizações para produção
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
+  },
+  define: {
+    // Garantir que o Vite substitua as variáveis de ambiente corretamente
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
   }
 })
