@@ -1,5 +1,3 @@
-import './utils/disableMixpanel'; // Desabilitar o Mixpanel antes de tudo para evitar erros
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -29,8 +27,6 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("Erro capturado pelo ErrorBoundary:", error, errorInfo)
     this.setState({ errorInfo })
-    
-    // Você pode adicionar telemetria ou logs de erro aqui
   }
 
   handleRefresh = () => {
@@ -69,17 +65,72 @@ class ErrorBoundary extends React.Component {
 }
 
 // Tratamento de eventos globais não capturados
-window.addEventListener('error', (event) => {
-  console.error('Erro global não tratado:', event.error)
-})
+const setupGlobalErrorHandlers = () => {
+  window.addEventListener('error', (event) => {
+    console.error('Erro global não tratado:', event.error)
+  })
 
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('Promessa rejeitada não tratada:', event.reason)
-})
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Promessa rejeitada não tratada:', event.reason)
+  })
+}
 
-// Otimização para aplicações PWA - precarregamento de páginas
-document.addEventListener('DOMContentLoaded', () => {
-  // Precarregar rotas principais após o carregamento inicial
+// Função para iniciar a aplicação React
+const startApp = () => {
+  // Configurar handlers de erro globais
+  setupGlobalErrorHandlers()
+  
+  // Função para inicializar a aplicação React
+  const initializeApp = () => {
+    const rootElement = document.getElementById('root')
+    if (!rootElement) {
+      console.error('Elemento root não encontrado')
+      return
+    }
+    
+    try {
+      const root = ReactDOM.createRoot(rootElement)
+      
+      root.render(
+        <React.StrictMode>
+          <ErrorBoundary>
+            <BrowserRouter>
+              <Suspense fallback={<LoadingSpinner fullScreen message="Carregando aplicação..." />}>
+                <AuthProvider>
+                  <App />
+                  <ToastContainer
+                    position="top-right"
+                    autoClose={4000}
+                    hideProgressBar={false}
+                    newestOnTop={false}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    theme="light"
+                  />
+                </AuthProvider>
+              </Suspense>
+            </BrowserRouter>
+          </ErrorBoundary>
+        </React.StrictMode>
+      )
+      
+      console.log('Aplicação inicializada com sucesso')
+    } catch (error) {
+      console.error('Erro ao renderizar aplicação:', error)
+    }
+  }
+  
+  // Inicializa a aplicação quando o DOM estiver pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp)
+  } else {
+    initializeApp()
+  }
+  
+  // Otimização para aplicações PWA - precarregamento de páginas
   if ('requestIdleCallback' in window) {
     window.requestIdleCallback(() => {
       import('./pages/HomePage')
@@ -87,40 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
       import('./pages/auth/RegisterPage')
     })
   }
-})
+}
 
-// Inicialização segura - para evitar erros durante a carga inicial
-const safeInitialize = () => {
-  try {
-    // Importação dinâmica - para evitar problemas de carregamento com o disableMixpanel
-    import('./utils/disableMixpanel')
-      .then(() => console.log('Sistema de proteção contra tracking carregado'))
-      .catch(err => console.error('Erro ao carregar proteção:', err));
-      
-    // Iniciar a aplicação React  
-    import('./startApp')
-      .then(module => module.default())
-      .catch(err => console.error('Erro ao iniciar aplicação:', err));
-  } catch (e) {
-    console.error('Erro durante inicialização:', e);
-    
-    // Fallback para caso de falha
-    setTimeout(() => {
-      const root = document.getElementById('root');
-      if (root) {
-        root.innerHTML = `
-          <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
-            <h2>Erro durante carregamento</h2>
-            <p>Ocorreu um problema ao iniciar a aplicação.</p>
-            <button onclick="window.location.reload()" style="padding: 10px 15px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">
-              Tentar Novamente
-            </button>
-          </div>
-        `;
-      }
-    }, 1000);
-  }
-};
-
-// Executar inicialização
-safeInitialize();
+export default startApp 

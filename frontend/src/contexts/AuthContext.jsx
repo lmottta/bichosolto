@@ -4,6 +4,7 @@ import axios from 'axios'
 import api from '../api/axios'
 import jwtDecode from 'jwt-decode'
 import { toast } from 'react-toastify'
+import SafeStorage from '../components/common/SafeStorage'
 
 const AuthContext = createContext()
 
@@ -11,6 +12,12 @@ export const useAuth = () => useContext(AuthContext)
 
 // Cache para evitar decodificações repetidas do mesmo token
 const tokenValidityCache = new Map();
+
+// Nome da chave usada para o token no armazenamento
+const TOKEN_KEY = 'auth_token';
+
+// TTL padrão para tokens em segundos (3 horas)
+const DEFAULT_TOKEN_TTL = 3 * 60 * 60;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -60,6 +67,30 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Obter o token de forma segura
+  const getToken = useCallback(() => {
+    return SafeStorage.getItem(TOKEN_KEY);
+  }, []);
+
+  // Salvar o token de forma segura
+  const saveToken = useCallback((token) => {
+    try {
+      // Decodificar o token para obter a data de expiração
+      const decodedToken = jwtDecode(token);
+      const expiresIn = decodedToken.exp - (Date.now() / 1000);
+      
+      // Salvar o token com TTL
+      const ttl = Math.max(expiresIn - 60, DEFAULT_TOKEN_TTL); // Expiração - 60 segundos de segurança
+      
+      console.log(`Salvando token válido por ${Math.round(ttl / 60)} minutos`);
+      return SafeStorage.setItem(TOKEN_KEY, token, { ttl });
+    } catch (error) {
+      console.error('Erro ao salvar token:', error);
+      // Fallback: salvar sem metadata ou TTL
+      return SafeStorage.setItem(TOKEN_KEY, token);
+    }
+  }, []);
+
   // Configuração de token nas requisições
   const setupAxiosInterceptors = useCallback((token) => {
     if (!token) return;
@@ -77,7 +108,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = getToken();
         console.log('Verificando autenticação com token:', token ? 'presente' : 'ausente');
         
         // Se não tem token, não está autenticado
@@ -128,7 +159,40 @@ export const AuthProvider = ({ children }) => {
     };
     
     checkAuth();
-  }, [isTokenValid, setupAxiosInterceptors]);
+  }, [getToken, isTokenValid, setupAxiosInterceptors]);
+
+  // Ouvir eventos de mudança de armazenamento
+  useEffect(() => {
+    // Função para lidar com mudanças no safestorage
+    const handleStorageChange = (event) => {
+      if (!event.detail) return;
+      
+      const { key, newValue } = event.detail;
+      
+      // Se o token foi alterado
+      if (key === TOKEN_KEY) {
+        if (!newValue) {
+          // Token removido
+          console.log('Token removido em outra guia');
+          setUser(null);
+          setIsAuthenticated(false);
+        } else if (newValue !== getToken()) {
+          // Token alterado
+          console.log('Token alterado em outra guia');
+          // Recarregar a página para atualizar o estado
+          window.location.reload();
+        }
+      }
+    };
+    
+    // Adicionar listener para o evento personalizado
+    window.addEventListener('safestorage', handleStorageChange);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('safestorage', handleStorageChange);
+    };
+  }, [getToken]);
 
   // Verificar a validade do token periodicamente de forma otimizada
   useEffect(() => {
@@ -139,7 +203,7 @@ export const AuthProvider = ({ children }) => {
       // Evitar verificações desnecessárias quando o usuário já não está autenticado
       if (!isAuthenticated) return;
       
-      const token = localStorage.getItem('token');
+      const token = getToken();
       const now = Date.now();
       
       // Otimização: verificar no máximo uma vez a cada 3 minutos
@@ -153,11 +217,11 @@ export const AuthProvider = ({ children }) => {
     }, 60 * 1000); // Verificar a cada minuto
     
     return () => clearInterval(interval);
-  }, [isAuthenticated, lastTokenCheck, isTokenValid, tokenCheckEnabled]);
+  }, [isAuthenticated, lastTokenCheck, isTokenValid, tokenCheckEnabled, getToken]);
 
   // Logout silencioso (sem mensagens ou redirecionamentos)
   const silentLogout = useCallback(() => {
-    localStorage.removeItem('token');
+    SafeStorage.removeItem(TOKEN_KEY);
     delete axios.defaults.headers.common['Authorization'];
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
@@ -186,8 +250,8 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Servidor retornou um token inválido ou expirado');
       }
       
-      // Salvar token no localStorage
-      localStorage.setItem('token', token);
+      // Salvar token de forma segura
+      saveToken(token);
       
       // Configurar o token no cabeçalho das requisições
       setupAxiosInterceptors(token);
@@ -217,6 +281,8 @@ export const AuthProvider = ({ children }) => {
       return false;
     } finally {
       setIsLoading(false);
+      // Reativar verificação mesmo em caso de erro
+      setTimeout(() => setTokenCheckEnabled(true), 1000);
     }
   };
 
@@ -289,8 +355,8 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Servidor retornou um token inválido ou expirado');
       }
       
-      // Salvar token no localStorage
-      localStorage.setItem('token', token);
+      // Salvar token de forma segura
+      saveToken(token);
       
       // Configurar o token no cabeçalho das requisições
       setupAxiosInterceptors(token);
@@ -458,4 +524,4 @@ export const AuthProvider = ({ children }) => {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+};
