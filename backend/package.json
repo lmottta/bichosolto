@@ -8,7 +8,7 @@
     "dev": "nodemon src/server.js",
     "test": "jest",
     "db:check": "node src/database/check-connection.js",
-    "railway:start": "npm run db:check && npm start"
+    "railway:start": "node src/server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

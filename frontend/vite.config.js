@@ -9,7 +9,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.API_URL || 'http://localhost:5000',
         changeOrigin: true,
         secure: false
       }
@@ -30,6 +30,7 @@ export default defineConfig({
   },
   define: {
     // Garantir que o Vite substitua as variáveis de ambiente corretamente
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || '/api')
   }
 })

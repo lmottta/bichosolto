@@ -1,13 +1,7 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm run prepare-railway"
+buildCommand = "cd frontend && npm install && npm run build && cd ../backend && npm install"
 
 [deploy]
-startCommand = "cd backend && npm run railway:start"
+startCommand = "cd backend && npm start"
 healthcheckPath = "/"
-healthcheckTimeout = 100
-restartPolicyType = "on-failure"
-restartPolicyMaxRetries = 10
-
-[environments]
-production.numReplicas = 1 
+healthcheckTimeout = 100 

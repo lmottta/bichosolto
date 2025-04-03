@@ -4,6 +4,7 @@ const cors = require('cors');
 const { sequelize } = require('./database/config');
 const path = require('path');
 const { DataTypes } = require('sequelize');
+const fs = require('fs');
 
 // Importante: Importando os modelos para garantir que são carregados antes da sincronização
 const models = require('./models');
@@ -13,6 +14,11 @@ const routes = require('./routes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Log de inicialização
+console.log('Iniciando servidor...');
+console.log(`NODE_ENV: ${process.env.NODE_ENV || 'não definido'}`);
+console.log(`PORT: ${PORT}`);
+
 // Configuração CORS aprimorada
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
@@ -20,6 +26,8 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
+
+console.log(`CORS configurado para: ${corsOptions.origin}`);
 
 // Middleware
 app.use(cors(corsOptions));
@@ -38,21 +46,34 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 // Rotas da API
 app.use('/api', routes);
 
+// Rota de teste para verificar se o servidor está funcionando
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    message: 'Animal Rescue Hub API está funcionando!',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Configuração para servir o frontend em produção
 if (process.env.NODE_ENV === 'production') {
-  // Definir pasta estática
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-
-  // Qualquer rota não definida pela API vai para o index.html
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
-  });
+  const frontendPath = path.join(__dirname, '../../frontend/dist');
+  
+  // Verificar se o diretório existe
+  if (fs.existsSync(frontendPath)) {
+    console.log(`Servindo frontend estático de: ${frontendPath}`);
+    
+    // Servir arquivos estáticos
+    app.use(express.static(frontendPath));
+    
+    // Qualquer rota não definida pela API vai para o index.html
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+  } else {
+    console.warn(`AVISO: Diretório do frontend não encontrado em: ${frontendPath}`);
+  }
 }
-
-// Rota de teste para verificar se o servidor está funcionando
-app.get('/', (req, res) => {
-  res.json({ message: 'Animal Rescue Hub API está funcionando!' });
-});
 
 // Adicionar rota de diagnóstico para verificar a conexão com banco de dados
 app.get('/api/diagnostico', async (req, res) => {
@@ -113,7 +134,7 @@ const startServer = async () => {
     console.log('Conexão com o banco de dados estabelecida com sucesso.');
     
     // Sincronizar modelos com o banco de dados (em desenvolvimento)
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' || process.env.DB_SYNC === 'true') {
       // Configuração do Sequelize para nomes de tabelas e colunas
       console.log('Iniciando sincronização dos modelos...');
       
@@ -125,6 +146,7 @@ const startServer = async () => {
     // Iniciar o servidor
     app.listen(PORT, () => {
       console.log(`Servidor rodando na porta ${PORT}`);
+      console.log(`Acesse: http://localhost:${PORT}/api/health para verificar o status`);
     });
   } catch (error) {
     console.error('Erro ao iniciar o servidor:', error);
