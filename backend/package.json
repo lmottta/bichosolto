@@ -6,9 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest",
-    "db:check": "node src/database/check-connection.js",
-    "railway:start": "node src/server.js"
+    "test": "jest"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -27,8 +25,5 @@
     "nodemon": "^3.0.1",
     "sequelize-cli": "^6.6.1",
     "supertest": "^6.3.3"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }

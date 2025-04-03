@@ -1,81 +1,62 @@
 import axios from 'axios';
 
-// Determinar a URL base da API
-const getApiBaseUrl = () => {
-  // Em produção, buscamos da variável de ambiente ou usamos o caminho relativo
-  if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_URL || '/api';
-  }
-  // Em desenvolvimento, usamos localhost
-  return import.meta.env.VITE_API_URL || 'http://localhost:5000';
-};
+// Configuração base do axios
+axios.defaults.baseURL = 'http://localhost:3000';
 
-// Criar uma instância do axios com configurações personalizadas
-const api = axios.create({
-  baseURL: getApiBaseUrl(),
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
+// Flag para controlar se estamos navegando manualmente
+let isManualNavigation = false;
+
+// Capturar eventos de navegação do usuário
+window.addEventListener('click', (event) => {
+  const target = event.target;
+  
+  // Verificar se o clique foi em um link para a página de doação
+  if (target.tagName === 'A' && (target.getAttribute('href') === '/donate' || target.pathname === '/donate')) {
+    console.log('Navegação manual para /donate detectada');
+    isManualNavigation = true;
+    setTimeout(() => {
+      isManualNavigation = false;
+    }, 1000); // Reset depois de 1 segundo
   }
 });
 
-// Log para debug
-console.log(`Axios configurado com baseURL: ${api.defaults.baseURL}`);
-
-// Interceptor para requisições
-api.interceptors.request.use(
-  config => {
+// Interceptor para adicionar o token de autenticação
+axios.interceptors.request.use(
+  (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  error => {
-    console.error('Erro na requisição:', error);
+  (error) => {
     return Promise.reject(error);
   }
 );
 
-// Interceptor para respostas
-api.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response) {
-      console.error('Erro de resposta:', error.response.status, error.response.data);
+// Lista de rotas públicas que não devem redirecionar para login
+const publicRoutes = ['/donate', '/volunteer', '/report-abuse', '/animals', '/events'];
+
+// Interceptor para tratamento de erros
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Verificar se o usuário está em uma rota pública
+      const currentPath = window.location.pathname;
+      const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
       
-      // Tratar erros específicos
-      if (error.response.status === 401) {
+      // Não redirecionar se estiver em uma rota pública ou se for navegação manual para doação
+      if (!isPublicRoute && !isManualNavigation && currentPath !== '/donate') {
         localStorage.removeItem('token');
-        // Redirecionar para login se necessário
+        console.log('Redirecionando para /login devido a erro 401');
+        window.location.href = '/login';
+      } else {
+        console.log('Erro 401 ignorado em página pública:', currentPath);
       }
-    } else if (error.request) {
-      console.error('Erro de requisição (sem resposta):', error.request);
-    } else {
-      console.error('Erro ao configurar requisição:', error.message);
     }
-    
     return Promise.reject(error);
   }
 );
 
-// Exportar axios padrão e a instância personalizada
-export default api;
-
-// Configuração global do axios padrão
-axios.defaults.baseURL = getApiBaseUrl();
-axios.defaults.withCredentials = true;
-
-// Configurar interceptadores globais
-axios.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  }
-);
-
-// Exportar a instância normal do axios também
-export { axios }; 
+export default axios; 
