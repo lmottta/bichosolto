@@ -29,6 +29,11 @@ app.get('/', (req, res) => {
   res.json({ message: 'Animal Rescue Hub API está funcionando!' });
 });
 
+// Rota de health check para o Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Adicionar rota de diagnóstico para verificar a conexão com banco de dados
 app.get('/api/diagnostico', async (req, res) => {
   try {

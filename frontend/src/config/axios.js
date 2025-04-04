@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // Configuração base do axios
-axios.defaults.baseURL = 'http://localhost:3000';
+const apiUrl = import.meta.env.VITE_API_URL || 'https://bichosoltobackend-production.up.railway.app';
+axios.defaults.baseURL = apiUrl;
 
 // Flag para controlar se estamos navegando manualmente
 let isManualNavigation = false;
