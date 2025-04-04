@@ -14,33 +14,13 @@ dotenv.config();
 
 const app = express();
 
-// --- INÍCIO DA NOVA CONFIGURAÇÃO CORS ---
-
-// 1. Ler a variável de ambiente DIRETAMENTE
-const frontendOrigin = process.env.FRONTEND_URL;
-
-// 2. Logar o valor LIDO (ESSENCIAL PARA DIAGNÓSTICO)
-console.log(`[CONFIG_CORS] Lendo process.env.FRONTEND_URL: ${frontendOrigin}`);
-
-// 3. Verificar se a variável foi realmente lida
-if (!frontendOrigin) {
-    console.error("[CONFIG_CORS] ERRO: A variável de ambiente FRONTEND_URL não foi encontrada ou está vazia!");
-    // Você pode decidir como lidar aqui: talvez permitir localhost ou lançar um erro.
-    // Por enquanto, vamos apenas logar o erro.
-}
-
-// 4. Aplicar o middleware CORS usando DIRETAMENTE a variável lida
+// Configuração do CORS
 app.use(cors({
-    origin: '*', // Permitir todas as origens
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    origin: 'https://bichosoltofrontend-production.up.railway.app', // URL do frontend
+    credentials: true, // Permitir cookies
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'] // Cabeçalhos permitidos
 }));
-
-// 5. Log após aplicar o middleware (para confirmar que esta parte do código rodou)
-console.log("[CONFIG_CORS] Middleware CORS aplicado.");
-
-// --- FIM DA NOVA CONFIGURAÇÃO CORS ---
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
