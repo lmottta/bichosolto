@@ -31,12 +31,10 @@ if (!frontendOrigin) {
 
 // 4. Aplicar o middleware CORS usando DIRETAMENTE a variável lida
 app.use(cors({
-    // Define a origem permitida. Se frontendOrigin for undefined/null/vazio,
-    // a origem não será permitida corretamente quando credentials=true.
     origin: frontendOrigin,
-    credentials: true, // MUITO IMPORTANTE para sessões/cookies
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Ser explícito sobre métodos
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'] // Ser explícito sobre headers
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // 5. Log após aplicar o middleware (para confirmar que esta parte do código rodou)
