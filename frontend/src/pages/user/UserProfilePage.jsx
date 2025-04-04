@@ -25,6 +25,8 @@ const UserProfilePage = () => {
     confirmPassword: '',
   });
 
+  console.log('UserProfilePage renderizando. Estado do usuário:', user);
+
   // Inicializar dados do perfil quando o usuário é carregado - otimizado com useEffect
   useEffect(() => {
     if (user) {
@@ -117,6 +119,8 @@ const UserProfilePage = () => {
     }
     
     setIsSubmitting(true);
+    
+    console.log('Tentando submeter formulário com API baseURL:', api.defaults.baseURL);
     
     try {
       const dataToSend = { ...profileData };

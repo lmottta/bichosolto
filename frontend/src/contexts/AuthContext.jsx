@@ -7,6 +7,8 @@ import { toast } from 'react-toastify'
 // axios.defaults.baseURL = import.meta.env.VITE_API_URL; // Deve apontar para o backend!
 // axios.defaults.withCredentials = true;
 
+console.log('AuthContext inicializando, URL base da API:', api.defaults.baseURL);
+
 const AuthContext = createContext(null)
 
 export const useAuth = () => {
@@ -24,11 +26,13 @@ export const AuthProvider = ({ children }) => {
 
   // Função para buscar dados do usuário via sessão/cookie
   const fetchUser = useCallback(async () => {
+    console.log('Tentando buscar usuário. URL base da API:', api.defaults.baseURL);
     console.log('AuthContext: Tentando buscar usuário via sessão...')
     // Não precisa setar isLoading aqui se já setamos no useEffect inicial
     try {
       // A requisição GET /api/users/me usará o cookie de sessão automaticamente
       const response = await api.get('/api/users/me')
+      console.log('Resposta recebida de /api/users/me:', response.data);
       setUser(response.data)
       console.log('AuthContext: Usuário carregado via sessão:', response.data)
     } catch (error) {
