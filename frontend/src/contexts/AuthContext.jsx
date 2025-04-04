@@ -26,12 +26,43 @@ export const AuthProvider = ({ children }) => {
           api.defaults.headers.common['Authorization'] = userId
           
           // Obter informações do usuário
+          console.log('Verificando autenticação - userId:', userId)
           const response = await api.get('/api/users/me')
+          console.log('Dados do usuário obtidos:', response.data)
+          
+          // Verificação de dados vazios ou incompletos
+          if (!response.data || Object.keys(response.data).length === 0) {
+            console.error('Dados do usuário vazios ou incompletos')
+            throw new Error('Dados do usuário vazios ou incompletos')
+          }
+          
           setUser(response.data)
           setIsAuthenticated(true)
         } catch (error) {
           console.error('Erro ao verificar autenticação:', error)
-          logout()
+          
+          // Tentar novamente com uma requisição direta para resolver problemas de CORS ou cache
+          try {
+            console.log('Tentando requisição alternativa para obter dados do usuário')
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+            const directResponse = await fetch(`${API_URL}/api/users/me`, {
+              headers: {
+                'Authorization': userId
+              }
+            })
+            
+            if (directResponse.ok) {
+              const userData = await directResponse.json()
+              console.log('Dados do usuário obtidos via fetch direto:', userData)
+              setUser(userData)
+              setIsAuthenticated(true)
+            } else {
+              throw new Error(`Falha na requisição direta: ${directResponse.status}`)
+            }
+          } catch (retryError) {
+            console.error('Erro na tentativa alternativa:', retryError)
+            logout()
+          }
         }
       }
       

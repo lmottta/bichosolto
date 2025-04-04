@@ -10,18 +10,31 @@ const authenticate = async (req, res, next) => {
       return next();
     }
     
-    // Verificar se o ID do usuário está presente no cabeçalho
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
+    // Verificar diferentes cabeçalhos de autenticação
+    // Primeiro, tentar o cabeçalho Authorization padrão
+    let userId = req.headers.authorization;
+    
+    // Verificar cabeçalhos alternativos se o padrão não estiver disponível
+    if (!userId) {
+      userId = req.headers['x-user-id'] || req.headers['x-userid'];
+      
+      // Se ainda não temos um ID, verificar o cabeçalho em lowercase
+      if (!userId) {
+        userId = req.headers['authorization'] || req.headers['x-authorization'];
+      }
+    }
+    
+    if (!userId) {
+      console.log('Cabeçalhos da requisição:', JSON.stringify(req.headers));
       return res.status(401).json({ message: 'Acesso não autorizado. Credenciais não fornecidas.' });
     }
-
-    // Extrair o ID do usuário do cabeçalho
-    const userId = authHeader;
+    
+    console.log('ID do usuário extraído do cabeçalho:', userId);
 
     // Buscar o usuário no banco de dados
     const user = await User.findByPk(userId);
     if (!user) {
+      console.log('Usuário não encontrado com ID:', userId);
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
 
@@ -29,6 +42,14 @@ const authenticate = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(401).json({ message: 'Conta desativada. Entre em contato com o suporte.' });
     }
+
+    // Log detalhado do usuário encontrado
+    console.log('Usuário autenticado:', {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name
+    });
 
     // Adicionar o usuário ao objeto de requisição
     req.user = {

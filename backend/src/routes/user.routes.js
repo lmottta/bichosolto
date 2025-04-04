@@ -46,15 +46,44 @@ const validateRequest = (req, res, next) => {
 // Rota para obter o perfil do usuário logado
 router.get('/me', authenticate, async (req, res) => {
   try {
+    console.log('Buscando perfil do usuário com ID:', req.user.id);
+    
+    // Buscar usuário com todos os atributos, exceto senha
     const user = await User.findByPk(req.user.id, {
       attributes: { exclude: ['password'] }
     });
 
     if (!user) {
+      console.log('Usuário não encontrado no banco de dados');
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    res.json(user);
+    // Log dos dados encontrados
+    console.log('Dados do usuário encontrados:', JSON.stringify(user, null, 2));
+    
+    // Garantir que todos os campos virtuais sejam calculados
+    const userData = user.toJSON();
+    
+    // Verificar se a URL da imagem foi corretamente calculada
+    if (user.profileImage && !userData.profileImageUrl) {
+      console.log('Recalculando URL da imagem de perfil para:', user.profileImage);
+      
+      // Calcular manualmente a URL da imagem
+      const apiBaseUrl = process.env.API_URL || 'http://localhost:5001';
+      
+      if (user.profileImage.startsWith('http')) {
+        userData.profileImageUrl = user.profileImage;
+      } else if (user.profileImage.startsWith('/')) {
+        userData.profileImageUrl = `${apiBaseUrl}${user.profileImage}`;
+      } else {
+        userData.profileImageUrl = `${apiBaseUrl}/${user.profileImage}`;
+      }
+      
+      console.log('URL da imagem de perfil calculada:', userData.profileImageUrl);
+    }
+    
+    // Retornar todos os dados do usuário
+    res.json(userData);
   } catch (error) {
     console.error('Erro ao buscar perfil:', error);
     res.status(500).json({ message: 'Erro ao buscar perfil' });

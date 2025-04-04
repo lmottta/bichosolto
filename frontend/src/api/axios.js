@@ -30,7 +30,20 @@ api.interceptors.request.use(
     // Verificar se há um ID de usuário no localStorage
     const userId = localStorage.getItem('userId');
     if (userId) {
-      config.headers.Authorization = userId;
+      // Adicionar cabeçalho de autorização
+      config.headers['Authorization'] = userId;
+      console.log('Cabeçalho Authorization adicionado:', userId);
+      
+      // Verificar se estamos no Railway (produção)
+      const isProduction = window.location.hostname !== 'localhost';
+      if (isProduction) {
+        // Adicionar cabeçalhos alternativos para garantir compatibilidade
+        config.headers['X-User-Id'] = userId;
+        config.headers['x-user-id'] = userId;
+        console.log('Cabeçalhos adicionais de autorização adicionados para produção');
+      }
+    } else {
+      console.log('Requisição sem autorização (nenhum userId no localStorage)');
     }
     
     // Adicionar configuração de retry
