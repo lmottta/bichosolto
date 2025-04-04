@@ -55,3 +55,16 @@ docker-compose.override.yaml
 # Railway específico
 .railway/
 NUL
+# Diretório bicho_solto_py
+bicho_solto_py/
+
+# Executáveis e Bats
+run-docker.bat
+run-docker.sh
+setup-railway.sh
+start-docker.bat
+stop-docker.bat
+fix-docker-setup.bat
+fix-docker-setup.sh
+
+
