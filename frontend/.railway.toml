@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfile = "Dockerfile.railway"
+dockerfile = "Dockerfile"
 
 [deploy]
 numReplicas = 1

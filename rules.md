@@ -25,6 +25,8 @@ Se forem fornecidos arquivos markdown, leia-os como referência para estruturar 
 Regras gerais:
 
 Sempre responda em portuges br .
+Leia sempre os arquivos para buscar mais informações sobre o código
+LEmbre-se que trem permissão para ler e editar conforme permissão do usuário
 Sempre prefira soluções simples.
 Evite a duplicação de código sempre que possível, o que significa verificar outras áreas do código que já possam ter código e funcionalidade semelhantes.
 Escreva código que leve em consideração os diferentes ambientes: dev, test e prod.
