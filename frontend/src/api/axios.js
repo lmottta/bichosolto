@@ -1,37 +1,107 @@
 import axios from 'axios';
 
-// HARD-CODE temporário da URL para garantir funcionamento
-const API_URL = 'https://bichosoltobackend-production.up.railway.app';
+// Função para reconectar em caso de falha na rede
+const setupRetry = (config) => {
+  // Número máximo de tentativas
+  config.retry = 3;
+  config.retryDelay = 1000;
+  
+  return config;
+};
 
-// Criando uma instância simplificada do axios
+// Obtém a URL da API das variáveis de ambiente
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+console.log('API URL utilizada:', API_URL);
+
+// Criando uma instância do axios com configurações base
 const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true
+  timeout: 15000, // 15 segundos (aumentado para dar mais tempo ao servidor)
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
-// Remover completamente qualquer referência a localStorage/userId
+// Interceptor para logging de requisições
 api.interceptors.request.use(
   (config) => {
-    // Log com a URL completa para verificar 
-    console.log(`REQUISIÇÃO: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Log de resposta simplificado
-api.interceptors.response.use(
-  (response) => {
-    console.log(`RESPOSTA: ${response.status} ${response.config.url}`);
-    return response;
+    console.log(`Enviando requisição para: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+    
+    // Verificar se há um ID de usuário no localStorage
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      config.headers.Authorization = userId;
+    }
+    
+    // Adicionar configuração de retry
+    return setupRetry(config);
   },
   (error) => {
-    console.error('ERRO API:', error.message);
+    console.error('Erro ao preparar requisição:', error);
     return Promise.reject(error);
   }
 );
 
-// Log para verificar a configuração no momento da exportação
-console.log('AXIOS CONFIG - URL BASE CONFIGURADA:', API_URL);
+// Interceptor para tratar erros globalmente
+api.interceptors.response.use(
+  (response) => {
+    console.log(`Resposta recebida: ${response.status} ${response.config.url}`);
+    return response;
+  },
+  async (error) => {
+    const { config } = error;
+    
+    // Se não há configuração da requisição, não podemos fazer retry
+    if (!config || !config.retry) {
+      console.error('Erro na requisição (sem retry possível):', error.message);
+      return Promise.reject(error);
+    }
+    
+    // Número de tentativas restantes
+    config.retry -= 1;
+    
+    // Se for erro de conexão recusada ou timeout, tentamos novamente
+    const networkErrors = ['ECONNABORTED', 'ETIMEDOUT', 'ECONNREFUSED', 'Network Error'];
+    const shouldRetry = 
+      config.retry > 0 && 
+      (networkErrors.includes(error.code) || (error.message && error.message.includes('Network Error')));
+    
+    if (shouldRetry) {
+      console.log(`Tentando reconectar (tentativas restantes: ${config.retry})...`);
+      
+      // Espera antes de tentar novamente
+      await new Promise(resolve => setTimeout(resolve, config.retryDelay));
+      
+      // Aumenta o delay para a próxima tentativa
+      config.retryDelay = config.retryDelay * 2;
+      
+      // Tentativa de reconexão
+      return api(config);
+    }
+    
+    // Log detalhado do erro
+    console.error('Erro na requisição:', error);
+    
+    // Se o erro for de timeout
+    if (error.code === 'ECONNABORTED') {
+      console.error('Timeout na requisição - o servidor demorou muito para responder');
+    }
+    
+    // Se o erro for de rede
+    if (error.message === 'Network Error') {
+      console.error('Erro de rede. Verifique se o servidor está rodando e acessível.');
+      
+      // Tentar fazer uma requisição simples para verificar se o servidor está acessível
+      try {
+        await fetch(`${API_URL}/api`);
+        console.log('Servidor está acessível, mas a requisição específica falhou');
+      } catch (testError) {
+        console.error('Servidor não está acessível:', testError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 export default api;
