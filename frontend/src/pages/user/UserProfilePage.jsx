@@ -49,7 +49,7 @@ const UserProfilePage = () => {
           setImagePreview(user.profileImage);
         } else {
           // Caso contrário, usar a URL base da API (definida no env ou usar localhost como fallback)
-          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
           setImagePreview(`${apiBaseUrl}${user.profileImage}`);
         }
       }

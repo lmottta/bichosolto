@@ -10,7 +10,7 @@ const setupRetry = (config) => {
 };
 
 // Obtém a URL da API das variáveis de ambiente
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 console.log('API URL utilizada:', API_URL);
 
 // Criando uma instância do axios com configurações base
