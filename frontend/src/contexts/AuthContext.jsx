@@ -204,7 +204,14 @@ export const AuthProvider = ({ children }) => {
       // Se já recebemos os dados do usuário, apenas atualizamos o state
       if (userData) {
         console.log('Atualizando dados do usuário no contexto:', userData);
-        setUser(userData)
+        // Forçar uma atualização completa do objeto de usuário para garantir que a interface seja atualizada
+        setUser(prevUser => ({
+          ...prevUser,
+          ...userData,
+          // Garantir que a URL da imagem seja atualizada
+          profileImageUrl: userData.profileImageUrl || prevUser?.profileImageUrl,
+          profileImage: userData.profileImage || prevUser?.profileImage
+        }))
         return true
       }
       

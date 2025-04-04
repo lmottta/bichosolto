@@ -170,15 +170,21 @@ const UserProfilePage = () => {
       }
       
       // Atualizar o contexto de autenticação com as novas informações
-      updateUserInfo(profileResponse.data);
+      const updatedUserData = profileResponse.data;
       
       // Atualizar o preview da imagem se tiver uma URL na resposta
-      if (profileResponse.data.profileImageUrl) {
+      if (updatedUserData.profileImageUrl) {
         // Adicionar um timestamp para evitar cache
         const timestamp = new Date().getTime();
-        const imageUrl = `${profileResponse.data.profileImageUrl}?t=${timestamp}`;
+        const imageUrl = `${updatedUserData.profileImageUrl}?t=${timestamp}`;
         setImagePreview(imageUrl);
+        
+        // Garantir que a URL da imagem seja atualizada no objeto de usuário
+        updatedUserData.profileImageUrl = imageUrl;
       }
+      
+      // Atualizar o contexto de autenticação com as novas informações
+      updateUserInfo(updatedUserData);
       
       toast.success('Perfil atualizado com sucesso!');
       setIsEditing(false);
