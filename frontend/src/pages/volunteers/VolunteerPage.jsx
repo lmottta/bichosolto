@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import axios from 'axios'
@@ -11,6 +11,9 @@ const VolunteerPage = () => {
   const [isVolunteer, setIsVolunteer] = useState(false)
   const [volunteerProfile, setVolunteerProfile] = useState(null)
   const [events, setEvents] = useState([])
+  const [eventsPage, setEventsPage] = useState(1)
+  const [hasMoreEvents, setHasMoreEvents] = useState(true)
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false)
   const [formData, setFormData] = useState({
     availability: 'weekends',
     skills: [],
@@ -22,16 +25,16 @@ const VolunteerPage = () => {
     emergencyContactPhone: ''
   })
 
-  // Opções para os campos de seleção
-  const availabilityOptions = [
+  // Opções para os campos de seleção - memoizadas para evitar recriação
+  const availabilityOptions = useMemo(() => [
     { value: 'weekends', label: 'Finais de semana' },
     { value: 'weekdays', label: 'Dias de semana' },
     { value: 'evenings', label: 'Noites' },
     { value: 'full_time', label: 'Tempo integral' },
     { value: 'on_call', label: 'Sob demanda' }
-  ]
+  ], [])
 
-  const skillOptions = [
+  const skillOptions = useMemo(() => [
     'Cuidados com animais',
     'Veterinária',
     'Transporte',
@@ -44,9 +47,9 @@ const VolunteerPage = () => {
     'Educação',
     'Treinamento de animais',
     'Construção/Manutenção'
-  ]
+  ], [])
 
-  const activityOptions = [
+  const activityOptions = useMemo(() => [
     'Resgate de animais',
     'Cuidados diários',
     'Passeios com cães',
@@ -58,58 +61,92 @@ const VolunteerPage = () => {
     'Educação e conscientização',
     'Limpeza e manutenção',
     'Apoio administrativo'
-  ]
+  ], [])
 
-  // Verificar se o usuário já é um voluntário
-  useEffect(() => {
-    const checkVolunteerStatus = async () => {
-      if (!isAuthenticated) return
+  // Verificar se o usuário já é um voluntário - usando useCallback para memoizar a função
+  const checkVolunteerStatus = useCallback(async () => {
+    if (!isAuthenticated) return
 
-      try {
-        setIsLoading(true)
-        const response = await axios.get('/api/volunteers/user/me')
-        setIsVolunteer(true)
-        setVolunteerProfile(response.data)
-      } catch (error) {
-        if (error.response?.status !== 404) {
-          console.error('Erro ao verificar status de voluntário:', error)
-        }
-        setIsVolunteer(false)
-      } finally {
-        setIsLoading(false)
+    try {
+      setIsLoading(true)
+      const response = await axios.get('/api/volunteers/user/me')
+      setIsVolunteer(true)
+      setVolunteerProfile(response.data)
+    } catch (error) {
+      if (error.response?.status !== 404) {
+        console.error('Erro ao verificar status de voluntário:', error)
       }
+      setIsVolunteer(false)
+    } finally {
+      setIsLoading(false)
     }
-
-    checkVolunteerStatus()
   }, [isAuthenticated])
 
-  // Buscar eventos disponíveis para voluntários
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await axios.get('/api/events', {
-          params: { isActive: true }
-        })
-        setEvents(response.data.events)
-      } catch (error) {
-        console.error('Erro ao buscar eventos:', error)
+  // Buscar eventos disponíveis para voluntários - com paginação
+  const fetchEvents = useCallback(async (page = 1, append = false) => {
+    if (isLoadingEvents || (!hasMoreEvents && page > 1)) return
+    
+    try {
+      setIsLoadingEvents(true)
+      const limit = 6 // Número de eventos por página
+      
+      const response = await axios.get('/api/events', {
+        params: { 
+          isActive: true,
+          page,
+          limit
+        }
+      })
+      
+      const newEvents = response.data.events || []
+      
+      // Verificar se há mais eventos para carregar
+      setHasMoreEvents(newEvents.length === limit)
+      
+      // Atualizar a lista de eventos (append ou substituir)
+      if (append) {
+        setEvents(prev => [...prev, ...newEvents])
+      } else {
+        setEvents(newEvents)
       }
+      
+      setEventsPage(page)
+    } catch (error) {
+      console.error('Erro ao buscar eventos:', error)
+      toast.error('Não foi possível carregar os eventos. Tente novamente mais tarde.')
+    } finally {
+      setIsLoadingEvents(false)
     }
+  }, [isLoadingEvents, hasMoreEvents])
 
-    fetchEvents()
-  }, [])
+  // Carregar mais eventos
+  const loadMoreEvents = useCallback(() => {
+    if (!isLoadingEvents && hasMoreEvents) {
+      fetchEvents(eventsPage + 1, true)
+    }
+  }, [fetchEvents, eventsPage, isLoadingEvents, hasMoreEvents])
+
+  // Efeito para verificar status de voluntário
+  useEffect(() => {
+    checkVolunteerStatus()
+  }, [checkVolunteerStatus])
+
+  // Efeito para buscar eventos iniciais
+  useEffect(() => {
+    fetchEvents(1, false)
+  }, [fetchEvents])
 
   // Manipular mudanças nos campos do formulário
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: type === 'checkbox' ? checked : value
-    })
-  }
+    }))
+  }, [])
 
   // Manipular mudanças em campos de múltipla seleção
-  const handleMultiSelectChange = (e, fieldName) => {
+  const handleMultiSelectChange = useCallback((e, fieldName) => {
     const value = e.target.value
     
     setFormData(prev => {
@@ -127,10 +164,10 @@ const VolunteerPage = () => {
         }
       }
     })
-  }
+  }, [])
 
   // Enviar formulário de cadastro de voluntário
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault()
     
     if (!isAuthenticated) {
@@ -181,10 +218,10 @@ const VolunteerPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [formData, isAuthenticated, navigate])
 
   // Inscrever-se em um evento como voluntário
-  const handleJoinEvent = async (eventId) => {
+  const handleJoinEvent = useCallback(async (eventId) => {
     if (!isAuthenticated) {
       toast.info('Faça login para participar deste evento')
       navigate('/login', { state: { from: '/volunteer' } })
@@ -225,19 +262,20 @@ const VolunteerPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [isAuthenticated, isVolunteer, navigate])
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">Seja um Voluntário</h1>
-      
-      {isLoading && (
+  // Renderização condicional do status do voluntário
+  const renderVolunteerStatus = useMemo(() => {
+    if (isLoading) {
+      return (
         <div className="flex justify-center my-8">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
-      )}
-      
-      {!isLoading && isVolunteer && volunteerProfile && (
+      )
+    }
+    
+    if (isVolunteer && volunteerProfile) {
+      return (
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Seu Perfil de Voluntário</h2>
           
@@ -311,9 +349,11 @@ const VolunteerPage = () => {
             </button>
           </div>
         </div>
-      )}
-      
-      {!isLoading && !isVolunteer && (
+      )
+    }
+    
+    if (!isVolunteer) {
+      return (
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Cadastre-se como Voluntário</h2>
           
@@ -460,68 +500,110 @@ const VolunteerPage = () => {
             </div>
           </form>
         </div>
-      )}
+      )
+    }
+    
+    return null
+  }, [isLoading, isVolunteer, volunteerProfile, formData, availabilityOptions, skillOptions, activityOptions, handleChange, handleMultiSelectChange, handleSubmit, navigate])
+
+  // Renderização dos eventos
+  const renderEvents = useMemo(() => {
+    if (events.length === 0 && !isLoadingEvents) {
+      return (
+        <div className="text-center py-8 bg-gray-50 rounded-lg">
+          <p className="text-gray-600">Nenhum evento disponível no momento.</p>
+        </div>
+      )
+    }
+    
+    return (
+      <>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {events.map(event => (
+            <div key={event.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+              {event.image && (
+                <img 
+                  src={event.image} 
+                  alt={event.title} 
+                  className="w-full h-48 object-cover"
+                  loading="lazy" // Carregamento lazy para imagens
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/300x200?text=Imagem+não+disponível';
+                  }}
+                />
+              )}
+              
+              <div className="p-4">
+                <h3 className="text-lg font-semibold mb-2">{event.title}</h3>
+                
+                <div className="flex items-center text-gray-600 mb-2">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <span>{new Date(event.startDate).toLocaleDateString()}</span>
+                </div>
+                
+                <div className="flex items-center text-gray-600 mb-2">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  </svg>
+                  <span>{event.location}</span>
+                </div>
+                
+                <p className="text-gray-600 mb-4 line-clamp-3">{event.description}</p>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">
+                    {event.maxParticipants ? 
+                      `${event.currentParticipants || 0}/${event.maxParticipants} voluntários` : 
+                      'Voluntários ilimitados'}
+                  </span>
+                  
+                  <button
+                    onClick={() => handleJoinEvent(event.id)}
+                    className="bg-primary text-white py-1 px-3 rounded-md hover:bg-primary-dark transition-colors text-sm"
+                    disabled={isLoading}
+                  >
+                    Participar
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {hasMoreEvents && (
+          <div className="mt-6 text-center">
+            <button 
+              onClick={loadMoreEvents}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 transition-colors"
+              disabled={isLoadingEvents}
+            >
+              {isLoadingEvents ? 'Carregando...' : 'Carregar mais eventos'}
+            </button>
+          </div>
+        )}
+      </>
+    )
+  }, [events, isLoadingEvents, hasMoreEvents, loadMoreEvents, handleJoinEvent, isLoading])
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-center mb-8">Seja um Voluntário</h1>
+      
+      {renderVolunteerStatus}
       
       {/* Eventos disponíveis para voluntários */}
       <div className="mt-8">
         <h2 className="text-2xl font-bold text-center mb-6">Eventos que Precisam de Voluntários</h2>
         
-        {events.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map(event => (
-              <div key={event.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                {event.image && (
-                  <img 
-                    src={event.image} 
-                    alt={event.title} 
-                    className="w-full h-48 object-cover"
-                  />
-                )}
-                
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold mb-2">{event.title}</h3>
-                  
-                  <div className="flex items-center text-gray-600 mb-2">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    <span>{new Date(event.startDate).toLocaleDateString()}</span>
-                  </div>
-                  
-                  <div className="flex items-center text-gray-600 mb-2">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    <span>{event.location}</span>
-                  </div>
-                  
-                  <p className="text-gray-600 mb-4 line-clamp-3">{event.description}</p>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">
-                      {event.maxParticipants ? 
-                        `${event.currentParticipants || 0}/${event.maxParticipants} voluntários` : 
-                        'Voluntários ilimitados'}
-                    </span>
-                    
-                    <button
-                      onClick={() => handleJoinEvent(event.id)}
-                      className="bg-primary text-white py-1 px-3 rounded-md hover:bg-primary-dark transition-colors text-sm"
-                      disabled={isLoading}
-                    >
-                      Participar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {isLoadingEvents && events.length === 0 ? (
+          <div className="flex justify-center my-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
           </div>
-        ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <p className="text-gray-600">Nenhum evento disponível no momento.</p>
-          </div>
-        )}
+        ) : renderEvents}
       </div>
       
       <div className="mt-8 max-w-2xl mx-auto bg-blue-50 p-4 rounded-lg">
