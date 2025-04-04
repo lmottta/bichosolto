@@ -130,6 +130,7 @@ const UserProfilePage = () => {
       
       // Se há uma nova imagem para upload, usar FormData
       if (profileImage) {
+        console.log('Enviando atualização de perfil com nova imagem');
         const formData = new FormData();
         
         // Adicionar os dados de texto
@@ -143,12 +144,22 @@ const UserProfilePage = () => {
         // Adicionar a imagem
         formData.append('profileImage', profileImage);
         
-        // Enviar com cabeçalho multipart/form-data
-        profileResponse = await axios.put('/api/users/me', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
+        // Log para debug
+        console.log('FormData criado com sucesso, enviando para API');
+        
+        try {
+          // Enviar com cabeçalho multipart/form-data
+          profileResponse = await axios.put('/api/users/me', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          
+          console.log('Resposta da API após upload de imagem:', profileResponse.data);
+        } catch (uploadError) {
+          console.error('Erro específico no upload da imagem:', uploadError);
+          throw uploadError;
+        }
       } else {
         // Enviar os dados sem imagem normalmente
         profileResponse = await axios.put('/api/users/me', {
@@ -170,7 +181,13 @@ const UserProfilePage = () => {
       }
       
       // Atualizar o contexto de autenticação com as novas informações
-      updateUserInfo(profileResponse.data);
+      const updateSuccess = await updateUserInfo(profileResponse.data);
+      
+      if (!updateSuccess) {
+        console.error('Falha ao atualizar informações do usuário no contexto');
+        toast.error('Erro ao atualizar perfil. Tente novamente.');
+        return;
+      }
       
       // Atualizar o preview da imagem se tiver uma URL na resposta
       if (profileResponse.data.profileImageUrl) {
@@ -178,6 +195,7 @@ const UserProfilePage = () => {
         const timestamp = new Date().getTime();
         const imageUrl = `${profileResponse.data.profileImageUrl}?t=${timestamp}`;
         setImagePreview(imageUrl);
+        console.log('Imagem de perfil atualizada:', imageUrl);
       }
       
       toast.success('Perfil atualizado com sucesso!');

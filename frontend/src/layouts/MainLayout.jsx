@@ -150,7 +150,7 @@ const MainLayout = () => {
                     <li><Link to="/user/reports" onClick={closeUserMenu}>Minhas Denúncias</Link></li>
                     <li><Link to="/user/adoptions" onClick={closeUserMenu}>Minhas Adoções</Link></li>
                     <li><Link to="/user/donations" onClick={closeUserMenu}>Minhas Doações</Link></li>
-                    <li><a onClick={(e) => { e.preventDefault(); closeUserMenu(); logout(); }}>Sair</a></li>
+                    <li><button onClick={() => { closeUserMenu(); logout(); }} className="w-full text-left">Sair</button></li>
                   </ul>
                 )}
               </div>

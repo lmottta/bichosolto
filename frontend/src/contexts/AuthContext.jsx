@@ -209,7 +209,12 @@ export const AuthProvider = ({ children }) => {
           const timestamp = new Date().getTime();
           userData.profileImageUrl = `${userData.profileImageUrl}?t=${timestamp}`;
         }
-        setUser({...userData}) // Usar spread operator para garantir nova referência do objeto
+        // Garantir que o usuário seja atualizado com todos os dados
+        setUser(prevUser => ({
+          ...prevUser,
+          ...userData
+        }))
+        setIsAuthenticated(true) // Garantir que o usuário continue autenticado
         return true
       }
       
@@ -221,7 +226,12 @@ export const AuthProvider = ({ children }) => {
         const timestamp = new Date().getTime();
         response.data.profileImageUrl = `${response.data.profileImageUrl}?t=${timestamp}`;
       }
-      setUser({...response.data}) // Usar spread operator para garantir nova referência do objeto
+      // Atualizar o usuário com os dados da API
+      setUser(prevUser => ({
+        ...prevUser,
+        ...response.data
+      }))
+      setIsAuthenticated(true) // Garantir que o usuário continue autenticado
       return true
     } catch (error) {
       console.error('Erro ao atualizar informações do usuário:', error)
@@ -246,25 +256,39 @@ export const AuthProvider = ({ children }) => {
 
   // Função de logout
   const logout = () => {
-    localStorage.removeItem('userId')
-    delete axios.defaults.headers.common['Authorization']
-    delete api.defaults.headers.common['Authorization']
-    setUser(null)
-    setIsAuthenticated(false)
-    
-    // Lista de páginas públicas
-    const publicRoutes = ['/donate', '/volunteer', '/animals', '/events', '/', '/about', '/contact', '/report-abuse']
-    const currentPath = window.location.pathname
-    
-    // Verificar se está em uma página pública
-    const isPublicPage = publicRoutes.some(route => currentPath.startsWith(route))
-    
-    // Só redirecionar para login se não estiver em uma página pública
-    if (!isPublicPage) {
-      navigate('/login')
-      toast.info('Você saiu da sua conta')
-    } else {
-      toast.info('Sessão encerrada')
+    try {
+      console.log('Iniciando processo de logout')
+      
+      // Limpar dados de autenticação do localStorage
+      localStorage.removeItem('userId')
+      
+      // Limpar cabeçalhos de autorização
+      delete axios.defaults.headers.common['Authorization']
+      delete api.defaults.headers.common['Authorization']
+      
+      // Atualizar estado do contexto
+      setUser(null)
+      setIsAuthenticated(false)
+      
+      // Lista de páginas públicas
+      const publicRoutes = ['/donate', '/volunteer', '/animals', '/events', '/', '/about', '/contact', '/report-abuse']
+      const currentPath = window.location.pathname
+      
+      // Verificar se está em uma página pública
+      const isPublicPage = publicRoutes.some(route => currentPath.startsWith(route))
+      
+      console.log('Logout realizado com sucesso. Página atual:', currentPath, 'É página pública:', isPublicPage)
+      
+      // Só redirecionar para login se não estiver em uma página pública
+      if (!isPublicPage) {
+        navigate('/login')
+        toast.info('Você saiu da sua conta')
+      } else {
+        toast.info('Sessão encerrada')
+      }
+    } catch (error) {
+      console.error('Erro durante o logout:', error)
+      toast.error('Ocorreu um erro ao sair da conta')
     }
   }
 
