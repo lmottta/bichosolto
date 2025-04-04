@@ -261,6 +261,22 @@ const updateUserPassword = async (req, res) => {
     }
 };
 
+// Função para logout de usuário
+const logoutUser = (req, res) => {
+    // Destruir a sessão
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Erro ao destruir sessão:', err);
+            // Mesmo com erro, tentar limpar o cookie do lado do cliente
+            res.clearCookie('connect.sid'); // 'connect.sid' é o nome padrão do cookie de sessão
+            return res.status(500).json({ message: 'Erro ao fazer logout' });
+        } else {
+            // Limpar o cookie do lado do cliente
+            res.clearCookie('connect.sid');
+            res.status(200).json({ message: 'Logout realizado com sucesso' });
+        }
+    });
+};
 
 // ... outras funções do controller ...
 
@@ -270,6 +286,7 @@ export {
     getUserProfile,
     updateUserProfile,
     updateUserPassword,
+    logoutUser,
     // ... exportar outras funções ...
 };
 

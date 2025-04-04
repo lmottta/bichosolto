@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from 'axios';
+import api from '../../api/axios';
 import { toast } from 'react-toastify';
+
+console.log('Componente carregado e usando instância api com baseURL:', api.defaults.baseURL);
 
 const UserProfilePage = () => {
   const { user, updateUserInfo, isLoading: authLoading } = useAuth();
@@ -149,7 +151,7 @@ const UserProfilePage = () => {
         
         try {
           // Enviar com cabeçalho multipart/form-data
-          profileResponse = await axios.put('/api/users/me', formData, {
+          profileResponse = await api.put('/api/users/me', formData, {
             headers: {
               'Content-Type': 'multipart/form-data'
             }
@@ -162,7 +164,7 @@ const UserProfilePage = () => {
         }
       } else {
         // Enviar os dados sem imagem normalmente
-        profileResponse = await axios.put('/api/users/me', {
+        profileResponse = await api.put('/api/users/me', {
           name: dataToSend.name,
           phone: dataToSend.phone,
           address: dataToSend.address,
@@ -174,7 +176,7 @@ const UserProfilePage = () => {
       
       // Se está alterando a senha, fazer uma chamada separada
       if (dataToSend.newPassword) {
-        await axios.put('/api/users/me/password', {
+        await api.put('/api/users/me/password', {
           currentPassword: dataToSend.currentPassword,
           newPassword: dataToSend.newPassword
         });

@@ -5,6 +5,7 @@ import {
     getUserProfile,
     updateUserProfile,
     updateUserPassword,
+    logoutUser,
      // ... importar outras funções ...
 } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js'; // Importar o middleware protect
@@ -27,6 +28,9 @@ router.put('/me', protect, upload.single('profileImage'), updateUserProfile);
 
 // Rota para atualizar senha (protegida)
 router.put('/me/password', protect, updateUserPassword);
+
+// Rota de logout (protegida ou não, dependendo da sua preferência, mas deve lidar com ausência de sessão)
+router.post('/logout', logoutUser);
 
 // ... outras rotas de usuário ...
 

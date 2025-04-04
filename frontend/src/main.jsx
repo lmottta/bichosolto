@@ -6,7 +6,7 @@ import './index.css'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import './config/axios'
+import './api/axios'
 
 // Log de diagnóstico
 console.log('Iniciando aplicação')

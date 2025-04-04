@@ -9,14 +9,20 @@ const setupRetry = (config) => {
   return config;
 };
 
-// Obtém a URL da API das variáveis de ambiente
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-console.log('API URL utilizada:', API_URL);
+// Defina explicitamente a URL base
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+console.log('API_URL do .env:', import.meta.env.VITE_API_URL);
+console.log('API URL que será usada:', apiUrl);
+
+// REMOVER configuração do axios global, vamos usar apenas a instância
+// axios.defaults.baseURL = apiUrl;
+// axios.defaults.withCredentials = true;
 
 // Criando uma instância do axios com configurações base
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: apiUrl,
   timeout: 15000, // 15 segundos (aumentado para dar mais tempo ao servidor)
+  withCredentials: true, // Importante para sessões/cookies
   headers: {
     'Content-Type': 'application/json'
   }
@@ -93,7 +99,7 @@ api.interceptors.response.use(
       
       // Tentar fazer uma requisição simples para verificar se o servidor está acessível
       try {
-        await fetch(`${API_URL}/api`);
+        await fetch(`${apiUrl}/api`);
         console.log('Servidor está acessível, mas a requisição específica falhou');
       } catch (testError) {
         console.error('Servidor não está acessível:', testError);
