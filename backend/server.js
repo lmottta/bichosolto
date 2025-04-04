@@ -14,26 +14,35 @@ dotenv.config();
 
 const app = express();
 
-// Configuração do CORS mais explícita
-const allowedOrigins = [
-    process.env.FRONTEND_URL, // Sua URL de produção principal
-    'http://localhost:5173'   // URL de desenvolvimento local (se ainda usar)
-].filter(Boolean); // filter(Boolean) remove entradas undefined/null se FRONTEND_URL não estiver definida
+// --- INÍCIO DA NOVA CONFIGURAÇÃO CORS ---
 
-console.log("Origens CORS permitidas:", allowedOrigins); // Log para debug no deploy
+// 1. Ler a variável de ambiente DIRETAMENTE
+const frontendOrigin = process.env.FRONTEND_URL;
 
+// 2. Logar o valor LIDO (ESSENCIAL PARA DIAGNÓSTICO)
+console.log(`[CONFIG_CORS] Lendo process.env.FRONTEND_URL: ${frontendOrigin}`);
+
+// 3. Verificar se a variável foi realmente lida
+if (!frontendOrigin) {
+    console.error("[CONFIG_CORS] ERRO: A variável de ambiente FRONTEND_URL não foi encontrada ou está vazia!");
+    // Você pode decidir como lidar aqui: talvez permitir localhost ou lançar um erro.
+    // Por enquanto, vamos apenas logar o erro.
+}
+
+// 4. Aplicar o middleware CORS usando DIRETAMENTE a variável lida
 app.use(cors({
-    origin: function (origin, callback) {
-        // Permite requisições sem 'origin' (como Postman ou mobile apps talvez) OU se a origem está na lista
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            console.error(`CORS bloqueado para origem: ${origin}`); // Log útil
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true // Essencial para cookies/sessões
+    // Define a origem permitida. Se frontendOrigin for undefined/null/vazio,
+    // a origem não será permitida corretamente quando credentials=true.
+    origin: frontendOrigin,
+    credentials: true, // MUITO IMPORTANTE para sessões/cookies
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Ser explícito sobre métodos
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'] // Ser explícito sobre headers
 }));
+
+// 5. Log após aplicar o middleware (para confirmar que esta parte do código rodou)
+console.log("[CONFIG_CORS] Middleware CORS aplicado.");
+
+// --- FIM DA NOVA CONFIGURAÇÃO CORS ---
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
