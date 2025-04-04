@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect } from 'react'
+import { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import api from '../api/axios'
@@ -41,33 +41,44 @@ export const AuthProvider = ({ children }) => {
     checkAuth()
   }, [])
 
-  // Função de login
-  const login = async (email, password) => {
+  // Função para buscar dados do usuário (ex: ao carregar a app ou após login)
+  const fetchUser = useCallback(async () => {
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      const response = await api.post('/api/auth/login', { email, password })
-      const { userId, user } = response.data
-      
-      // Salvar ID do usuário no localStorage
-      localStorage.setItem('userId', userId)
-      
-      // Configurar o ID do usuário no cabeçalho das requisições
-      axios.defaults.headers.common['Authorization'] = userId
-      api.defaults.headers.common['Authorization'] = userId
-      
-      setUser(user)
-      setIsAuthenticated(true)
-      toast.success('Login realizado com sucesso!')
-      
-      return true
+      // Tenta buscar dados do usuário logado usando a sessão/cookie
+      const response = await axios.get('/api/users/me')
+      setUser(response.data)
+      console.log('Usuário carregado do backend:', response.data)
     } catch (error) {
-      console.error('Erro ao fazer login:', error)
-      toast.error(error.response?.data?.message || 'Erro ao fazer login')
-      return false
+      // Se der erro (ex: 401 não autorizado), significa que não há sessão válida
+      console.log('Nenhuma sessão de usuário ativa encontrada ou erro ao buscar:', error.response?.data?.message || error.message)
+      setUser(null)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  // Carregar dados do usuário ao montar o provider
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
+
+  // Função de login
+  const login = useCallback(async (email, password) => {
+    setIsLoading(true)
+    try {
+      const response = await api.post('/api/users/login', { email, password })
+      setUser(response.data) // Armazena os dados do usuário retornados pelo login
+      setIsAuthenticated(true)
+      toast.success('Login realizado com sucesso!')
+      return true // Indica sucesso
+    } catch (error) {
+      console.error("Erro no login:", error.response?.data?.message || error.message)
+      setUser(null)
+      setIsLoading(false)
+      throw error // Re-lança o erro para o componente de login tratar (ex: mostrar toast)
+    }
+  }, [])
 
   // Função de registro
   const register = async (userData) => {
@@ -196,66 +207,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Função para atualizar os dados do usuário no contexto
-  const updateUserInfo = async (userData) => {
-    try {
-      setIsLoading(true)
-      
-      // Se já recebemos os dados do usuário, apenas atualizamos o state
-      if (userData) {
-        console.log('Atualizando dados do usuário no contexto:', userData);
-        // Adicionar timestamp para evitar cache de imagem
-        if (userData.profileImageUrl) {
-          const timestamp = new Date().getTime();
-          userData.profileImageUrl = `${userData.profileImageUrl}?t=${timestamp}`;
-        }
-        // Garantir que o usuário seja atualizado com todos os dados
-        setUser(prevUser => ({
-          ...prevUser,
-          ...userData
-        }))
-        setIsAuthenticated(true) // Garantir que o usuário continue autenticado
-        return true
-      }
-      
-      // Caso contrário, buscamos os dados atualizados da API
-      const response = await api.get('/api/users/me')
-      console.log('Dados do usuário buscados da API:', response.data);
-      // Adicionar timestamp para evitar cache de imagem
-      if (response.data.profileImageUrl) {
-        const timestamp = new Date().getTime();
-        response.data.profileImageUrl = `${response.data.profileImageUrl}?t=${timestamp}`;
-      }
-      // Atualizar o usuário com os dados da API
-      setUser(prevUser => ({
-        ...prevUser,
-        ...response.data
-      }))
-      setIsAuthenticated(true) // Garantir que o usuário continue autenticado
-      return true
-    } catch (error) {
-      console.error('Erro ao atualizar informações do usuário:', error)
-      
-      // Extrair mensagem de erro da resposta da API
-      let errorMessage = 'Erro ao atualizar dados do perfil';
-      
-      if (error.response) {
-        if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        }
-      }
-      
-      toast.error(errorMessage)
-      return false
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Função para atualizar informações do usuário (usada pelo UserProfilePage)
+  const updateUserInfo = useCallback((newUserInfo) => {
+    // Simplesmente atualiza o estado 'user' com os novos dados recebidos da API
+    // Certifique-se que newUserInfo contém todos os campos necessários, incluindo profileImageUrl
+    console.log('AuthContext: Atualizando informações do usuário:', newUserInfo);
+    setUser(prevUser => ({
+      ...prevUser, // Mantém campos não atualizados (se houver)
+      ...newUserInfo // Sobrescreve com os novos dados
+    }));
+    return true; // Indica sucesso na atualização do contexto
+  }, []);
 
   // Função de logout
-  const logout = () => {
+  const logout = useCallback(async () => {
+    setIsLoading(true)
     try {
       console.log('Iniciando processo de logout')
       
@@ -289,8 +255,10 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Erro durante o logout:', error)
       toast.error('Ocorreu um erro ao sair da conta')
+    } finally {
+      setIsLoading(false)
     }
-  }
+  }, [navigate])
 
   // Verificar se o usuário tem determinada permissão
   const hasPermission = (requiredRole) => {
@@ -298,16 +266,18 @@ export const AuthProvider = ({ children }) => {
     return user.role === requiredRole
   }
 
-  const value = {
+  const value = useMemo(() => ({
     user,
+    setUser, // Pode ser útil expor setUser diretamente em alguns casos
     isAuthenticated,
     isLoading,
     login,
     register,
     logout,
     hasPermission,
-    updateUserInfo
-  }
+    updateUserInfo,
+    fetchUser // Expor fetchUser pode ser útil para revalidar
+  }), [user, isAuthenticated, isLoading, login, register, logout, hasPermission, updateUserInfo, fetchUser])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
