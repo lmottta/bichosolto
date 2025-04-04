@@ -14,9 +14,25 @@ dotenv.config();
 
 const app = express();
 
+// Configuração do CORS mais explícita
+const allowedOrigins = [
+    process.env.FRONTEND_URL, // Sua URL de produção principal
+    'http://localhost:5173'   // URL de desenvolvimento local (se ainda usar)
+].filter(Boolean); // filter(Boolean) remove entradas undefined/null se FRONTEND_URL não estiver definida
+
+console.log("Origens CORS permitidas:", allowedOrigins); // Log para debug no deploy
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true
+    origin: function (origin, callback) {
+        // Permite requisições sem 'origin' (como Postman ou mobile apps talvez) OU se a origem está na lista
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.error(`CORS bloqueado para origem: ${origin}`); // Log útil
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true // Essencial para cookies/sessões
 }));
 
 app.use(express.json());
