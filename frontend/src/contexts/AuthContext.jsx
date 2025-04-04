@@ -204,21 +204,24 @@ export const AuthProvider = ({ children }) => {
       // Se já recebemos os dados do usuário, apenas atualizamos o state
       if (userData) {
         console.log('Atualizando dados do usuário no contexto:', userData);
-        // Forçar uma atualização completa do objeto de usuário para garantir que a interface seja atualizada
-        setUser(prevUser => ({
-          ...prevUser,
-          ...userData,
-          // Garantir que a URL da imagem seja atualizada
-          profileImageUrl: userData.profileImageUrl || prevUser?.profileImageUrl,
-          profileImage: userData.profileImage || prevUser?.profileImage
-        }))
+        // Adicionar timestamp para evitar cache de imagem
+        if (userData.profileImageUrl) {
+          const timestamp = new Date().getTime();
+          userData.profileImageUrl = `${userData.profileImageUrl}?t=${timestamp}`;
+        }
+        setUser({...userData}) // Usar spread operator para garantir nova referência do objeto
         return true
       }
       
       // Caso contrário, buscamos os dados atualizados da API
       const response = await api.get('/api/users/me')
       console.log('Dados do usuário buscados da API:', response.data);
-      setUser(response.data)
+      // Adicionar timestamp para evitar cache de imagem
+      if (response.data.profileImageUrl) {
+        const timestamp = new Date().getTime();
+        response.data.profileImageUrl = `${response.data.profileImageUrl}?t=${timestamp}`;
+      }
+      setUser({...response.data}) // Usar spread operator para garantir nova referência do objeto
       return true
     } catch (error) {
       console.error('Erro ao atualizar informações do usuário:', error)
