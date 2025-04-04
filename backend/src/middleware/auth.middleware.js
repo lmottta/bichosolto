@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
 // Middleware para verificar autenticação
@@ -19,32 +20,11 @@ const authenticate = async (req, res, next) => {
     // Extrair o token do cabeçalho
     const token = authHeader.split(' ')[1];
 
-    // Verificar o formato do token simplificado (SimpleAuth_id_email)
-    if (!token.startsWith('SimpleAuth_')) {
-      return res.status(401).json({ message: 'Formato de token inválido.' });
-    }
-    
-    // Extrair id e email do token
-    const parts = token.split('_');
-    if (parts.length !== 3) {
-      return res.status(401).json({ message: 'Token inválido.' });
-    }
-    
-    const userId = parts[1];
-    const email = parts[2];
-    
-    if (!userId || !email) {
-      return res.status(401).json({ message: 'Token inválido.' });
-    }
-    
+    // Verificar e decodificar o token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     // Buscar o usuário no banco de dados
-    const user = await User.findOne({ 
-      where: { 
-        id: userId,
-        email: email 
-      } 
-    });
-    
+    const user = await User.findByPk(decoded.id);
     if (!user) {
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
@@ -62,8 +42,11 @@ const authenticate = async (req, res, next) => {
       name: user.name
     };
 
-    return next();
+    next();
   } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token inválido ou expirado.' });
+    }
     console.error('Erro de autenticação:', error);
     res.status(500).json({ message: 'Erro interno do servidor.' });
   }

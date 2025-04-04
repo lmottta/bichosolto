@@ -8,7 +8,7 @@ const Volunteer = sequelize.define('Volunteer', {
     primaryKey: true,
   },
   userId: {
-type: DataTypes.UUID,
+    type: DataTypes.UUID,
     allowNull: false,
     references: {
       model: 'User',

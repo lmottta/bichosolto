@@ -149,18 +149,7 @@ const User = sequelize.define('User', {
 
 // Método para verificar senha
 User.prototype.checkPassword = async function(password) {
-  try {
-    if (!password || !this.password) {
-      console.error('Senha ou hash não fornecidos para comparação');
-      return false;
-    }
-    const isValid = await bcrypt.compare(password, this.password);
-    console.log('Resultado da verificação de senha:', isValid);
-    return isValid;
-  } catch (error) {
-    console.error('Erro ao verificar senha:', error);
-    return false;
-  }
+  return await bcrypt.compare(password, this.password);
 };
 
 module.exports = User;

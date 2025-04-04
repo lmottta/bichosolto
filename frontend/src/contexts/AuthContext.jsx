@@ -1,38 +1,13 @@
-import { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useState, useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import api from '../api/axios'
+import jwtDecode from 'jwt-decode'
 import { toast } from 'react-toastify'
 
 const AuthContext = createContext()
 
 export const useAuth = () => useContext(AuthContext)
-
-// Chaves para armazenamento local
-const USER_KEY = 'auth_user';
-const AUTH_KEY = 'auth_status';
-
-// Função simples para armazenar informações no localStorage com tratamento de erros
-const safeSetItem = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch (e) {
-    console.error(`Erro ao salvar ${key}:`, e);
-    return false;
-  }
-};
-
-// Função para obter informações do localStorage com tratamento de erros
-const safeGetItem = (key) => {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : null;
-  } catch (e) {
-    console.error(`Erro ao obter ${key}:`, e);
-    return null;
-  }
-};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -40,123 +15,189 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
 
-  // Configuração de autenticação nas requisições
-  const setupAxiosAuth = useCallback((userData) => {
-    if (!userData) {
-      delete axios.defaults.headers.common['Authorization'];
-      delete api.defaults.headers.common['Authorization'];
-      return;
-    }
-    
-    // Usar SimpleAuth como método de autenticação
-    const authValue = `Bearer SimpleAuth_${userData.id}_${userData.email}`;
-    axios.defaults.headers.common['Authorization'] = authValue;
-    api.defaults.headers.common['Authorization'] = authValue;
-    console.log('Autenticação configurada nos headers');
-  }, []);
-
   // Verificar se o usuário já está autenticado ao carregar a página
   useEffect(() => {
-    const checkAuthStatus = () => {
-      try {
-        setIsLoading(true);
-        
-        // Remover tokens antigos
-        localStorage.removeItem('token');
-        
-        // Verificar se há dados de usuário salvos
-        const savedUser = safeGetItem(USER_KEY);
-        const savedAuthStatus = safeGetItem(AUTH_KEY);
-        
-        if (savedUser && savedAuthStatus) {
-          // Configurar cliente axios
-          setupAxiosAuth(savedUser);
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token')
+      
+      if (token) {
+        try {
+          // Verificar se o token expirou
+          const decodedToken = jwtDecode(token)
+          const currentTime = Date.now() / 1000
           
-          // Atualizar estado
-          setUser(savedUser);
-          setIsAuthenticated(true);
-        } else {
-          // Limpar autenticação se não há dados completos
-          clearAuth();
+          if (decodedToken.exp < currentTime) {
+            // Token expirado
+            logout()
+            return
+          }
+          
+          // Configurar o token no cabeçalho das requisições
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          
+          // Obter informações do usuário
+          const response = await api.get('/api/users/me')
+          setUser(response.data)
+          setIsAuthenticated(true)
+        } catch (error) {
+          console.error('Erro ao verificar autenticação:', error)
+          logout()
         }
-      } catch (e) {
-        console.error('Erro ao verificar autenticação:', e);
-        clearAuth();
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
-    checkAuthStatus();
-  }, [setupAxiosAuth]);
-
-  // Limpar dados de autenticação
-  const clearAuth = useCallback(() => {
-    try {
-      // Remover dados de localStorage
-      localStorage.removeItem(USER_KEY);
-      localStorage.removeItem(AUTH_KEY);
       
-      // Limpar headers de autenticação
-      delete axios.defaults.headers.common['Authorization'];
-      delete api.defaults.headers.common['Authorization'];
-      
-      // Atualizar estado do contexto
-      setUser(null);
-      setIsAuthenticated(false);
-      
-      console.log('Dados de autenticação limpos com sucesso');
-    } catch (error) {
-      console.error('Erro ao limpar dados de autenticação:', error);
-      // Garantir que o estado do contexto seja atualizado mesmo em caso de erro
-      setUser(null);
-      setIsAuthenticated(false);
+      setIsLoading(false)
     }
-  }, []);
+    
+    checkAuth()
+  }, [])
 
-  // Função de login simplificada
-  const login = useCallback(async (email, password) => {
+  // Função de login
+  const login = async (email, password) => {
+    try {
+      setIsLoading(true)
+      const response = await api.post('/api/auth/login', { email, password })
+      const { token, user } = response.data
+      
+      // Salvar token no localStorage
+      localStorage.setItem('token', token)
+      
+      // Configurar o token no cabeçalho das requisições
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      
+      setUser(user)
+      setIsAuthenticated(true)
+      toast.success('Login realizado com sucesso!')
+      
+      return true
+    } catch (error) {
+      console.error('Erro ao fazer login:', error)
+      toast.error(error.response?.data?.message || 'Erro ao fazer login')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Função de registro
+  const register = async (userData) => {
     try {
       setIsLoading(true);
+      console.log('Iniciando processo de registro');
       
-      const response = await api.post('/auth/login', { email, password });
+      // Sanitizar dados antes de enviar
+      const sanitizedData = { ...userData };
       
-      console.log('Resposta completa do backend (login):', response);
-      console.log('Dados da resposta (login):', response.data);
-      
-      // Verificar se a resposta contém os dados do usuário
-      if (!response || !response.data) {
-        throw new Error('Resposta vazia do servidor');
+      // Garantir que os valores de telefone e outros campos estão corretos
+      if (typeof sanitizedData.phone === 'string') {
+        sanitizedData.phone = sanitizedData.phone.replace(/\D/g, '');
       }
       
-      // Extrair os dados do usuário com segurança
-      const userData = response.data.user;
-      
-      // Verificação dos dados do usuário
-      if (!userData) {
-        throw new Error('Dados do usuário não fornecidos pelo servidor');
+      if (sanitizedData.role === 'ong') {
+        if (typeof sanitizedData.cnpj === 'string') {
+          sanitizedData.cnpj = sanitizedData.cnpj.replace(/\D/g, '');
+        }
+        
+        if (typeof sanitizedData.responsiblePhone === 'string') {
+          sanitizedData.responsiblePhone = sanitizedData.responsiblePhone.replace(/\D/g, '');
+        }
+        
+        if (typeof sanitizedData.postalCode === 'string') {
+          sanitizedData.postalCode = sanitizedData.postalCode.replace(/\D/g, '');
+        }
+      } else {
+        // Se não for ONG, remover campos específicos
+        delete sanitizedData.cnpj;
+        delete sanitizedData.description;
+        delete sanitizedData.foundingDate;
+        delete sanitizedData.website;
+        delete sanitizedData.socialMedia;
+        delete sanitizedData.responsibleName;
+        delete sanitizedData.responsiblePhone;
+        delete sanitizedData.postalCode;
       }
       
-      // Salvar dados do usuário e status de autenticação
-      safeSetItem(USER_KEY, userData);
-      safeSetItem(AUTH_KEY, true);
+      console.log('Dados sanitizados para registro:', {...sanitizedData, password: '*****'});
       
-      // Configurar headers de autenticação
-      setupAxiosAuth(userData);
+      // Log detalhado da requisição
+      console.log(`Enviando POST para ${api.defaults.baseURL}/api/auth/register`);
       
-      setUser(userData);
+      // Tentar a requisição com timeout aumentado e encapsulamento para evitar travamentos
+      const response = await Promise.race([
+        api.post('/api/auth/register', sanitizedData),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout manual - servidor não respondeu em tempo hábil')), 20000)
+        )
+      ]);
+      
+      console.log('Resposta recebida com sucesso:', response.status);
+      console.log('Dados do usuário:', response.data.user ? {...response.data.user, password: undefined} : 'Sem dados de usuário');
+      
+      const { token, user } = response.data;
+      
+      // Salvar token no localStorage
+      localStorage.setItem('token', token);
+      
+      // Configurar o token no cabeçalho das requisições
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      setUser(user);
       setIsAuthenticated(true);
-      toast.success('Login realizado com sucesso!');
+      toast.success('Cadastro realizado com sucesso!');
       
       return true;
     } catch (error) {
-      console.error('Erro ao fazer login:', error);
+      console.error('Erro ao fazer cadastro:', error);
       
-      let errorMessage = 'Erro ao fazer login. Tente novamente.';
-      
-      // Verificar se o erro tem uma resposta do servidor
+      // Log detalhado de erro
       if (error.response) {
-        errorMessage = error.response.data?.message || errorMessage;
+        // O servidor respondeu com um código de status fora do intervalo 2xx
+        console.error(`Erro na resposta do servidor: ${error.response.status}`, error.response.data);
+      } else if (error.request) {
+        // A requisição foi feita mas nenhuma resposta foi recebida
+        console.error('Sem resposta do servidor:', error.request);
+        
+        // Verificar se o backend está em execução
+        try {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+          const testConnection = await fetch(`${API_URL}/api`);
+          console.log('Teste de conexão com backend:', testConnection.status);
+        } catch (connError) {
+          console.error('Backend não está acessível:', connError);
+        }
+      } else {
+        // Algo aconteceu durante a configuração da requisição que desencadeou um erro
+        console.error('Erro na configuração da requisição:', error.message);
+      }
+      
+      // Extrair mensagem de erro da resposta da API
+      let errorMessage = 'Erro ao fazer cadastro';
+      
+      if (error.response) {
+        console.log('Resposta de erro do servidor:', error.response.status, error.response.data);
+        // Se há resposta da API com status de erro
+        if (error.response.data.errors && error.response.data.errors.length > 0) {
+          // Erros de validação (array de erros)
+          errorMessage = error.response.data.errors.map(err => err.msg || err.message).join(', ');
+        } else if (error.response.data.message) {
+          // Mensagem de erro única
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          // Formato alternativo de erro
+          errorMessage = error.response.data.error;
+        } else if (typeof error.response.data === 'string') {
+          // Resposta como string
+          errorMessage = error.response.data;
+        }
+      } else if (error.request) {
+        // Requisição foi feita mas não houve resposta
+        console.log('Sem resposta do servidor:', error.request);
+        errorMessage = 'Servidor não respondeu. Verifique se o backend está em execução.';
+      } else if (error.message) {
+        // Erro de rede ou outros erros
+        errorMessage = error.message;
       }
       
       toast.error(errorMessage);
@@ -164,119 +205,86 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, setupAxiosAuth]);
+  };
 
-  // Função de registro com validação de senha
-  const register = useCallback(async (userData) => {
-    // Validar senha (pelo menos 6 caracteres)
-    if (!userData.password || userData.password.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
-      return false;
-    }
-    
+  // Função para atualizar os dados do usuário no contexto
+  const updateUserInfo = async (userData) => {
     try {
-      setIsLoading(true);
+      setIsLoading(true)
       
-      const response = await api.post('/auth/register', userData);
-      
-      console.log('Resposta completa do backend (registro):', response);
-      console.log('Dados da resposta (registro):', response.data);
-      
-      // Verificar se a resposta contém os dados do usuário
-      if (!response || !response.data) {
-        throw new Error('Resposta vazia do servidor');
+      // Se já recebemos os dados do usuário, apenas atualizamos o state
+      if (userData) {
+        console.log('Atualizando dados do usuário no contexto:', userData);
+        setUser(userData)
+        return true
       }
       
-      // Extrair os dados do usuário com segurança
-      const responseData = response.data; // A resposta direta já contém o usuário e token
-      const registeredUser = responseData.user;
-      
-      if (!registeredUser) {
-        throw new Error('Dados do usuário não fornecidos pelo servidor');
-      }
-      
-      toast.success('Registro realizado com sucesso! Faça login para continuar.');
-      
-      return true;
+      // Caso contrário, buscamos os dados atualizados da API
+      const response = await api.get('/api/users/me')
+      console.log('Dados do usuário buscados da API:', response.data);
+      setUser(response.data)
+      return true
     } catch (error) {
-      console.error('Erro ao registrar:', error);
+      console.error('Erro ao atualizar informações do usuário:', error)
       
-      let errorMessage = 'Erro ao registrar usuário. Tente novamente.';
+      // Extrair mensagem de erro da resposta da API
+      let errorMessage = 'Erro ao atualizar dados do perfil';
       
-      // Verificar se o erro tem uma resposta do servidor
       if (error.response) {
-        errorMessage = error.response.data?.message || errorMessage;
+        if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
       }
       
-      toast.error(errorMessage);
-      return false;
+      toast.error(errorMessage)
+      return false
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  }, []);
+  }
 
   // Função de logout
-  const logout = useCallback(() => {
-    clearAuth();
-    navigate('/login');
-    toast.info('Logout realizado com sucesso!');
-  }, [navigate, clearAuth]);
-
-  // Verificar se usuário tem permissão para determinada rota/ação
-  const hasPermission = useCallback((requiredRole) => {
-    if (!user) return false;
+  const logout = () => {
+    localStorage.removeItem('token')
+    delete axios.defaults.headers.common['Authorization']
+    delete api.defaults.headers.common['Authorization']
+    setUser(null)
+    setIsAuthenticated(false)
     
-    // Se não há papel requerido, qualquer usuário logado tem permissão
-    if (!requiredRole) return true;
+    // Lista de páginas públicas
+    const publicRoutes = ['/donate', '/volunteer', '/animals', '/events', '/', '/about', '/contact', '/report-abuse']
+    const currentPath = window.location.pathname
     
-    // Admin tem acesso a tudo
-    if (user.role === 'admin') return true;
+    // Verificar se está em uma página pública
+    const isPublicPage = publicRoutes.some(route => currentPath.startsWith(route))
     
-    // Verificar se o papel do usuário corresponde ao requerido
-    return user.role === requiredRole;
-  }, [user]);
-
-  // Função para atualizar as informações do usuário no contexto
-  const updateUserInfo = useCallback((newUserData) => {
-    if (!newUserData) return;
-    
-    try {
-      // Obter os dados atuais do usuário
-      const currentUserData = safeGetItem(USER_KEY);
-      
-      // Mesclar os dados atuais com os novos
-      const updatedUserData = { ...currentUserData, ...newUserData };
-      
-      // Salvar os dados atualizados
-      safeSetItem(USER_KEY, updatedUserData);
-      
-      // Atualizar o estado
-      setUser(updatedUserData);
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao atualizar informações do usuário:', error);
-      return false;
+    // Só redirecionar para login se não estiver em uma página pública
+    if (!isPublicPage) {
+      navigate('/login')
+      toast.info('Você saiu da sua conta')
+    } else {
+      toast.info('Sessão encerrada')
     }
-  }, []);
+  }
 
-  // Memorizar o valor do contexto para evitar re-renders desnecessários
-  const contextValue = useMemo(() => ({    
+  // Verificar se o usuário tem determinada permissão
+  const hasPermission = (requiredRole) => {
+    if (!isAuthenticated || !user) return false
+    return user.role === requiredRole
+  }
+
+  const value = {
     user,
     isAuthenticated,
     isLoading,
     login,
+    register,
     logout,
     hasPermission,
-    register,
     updateUserInfo
-  }), [user, isAuthenticated, isLoading, login, logout, hasPermission, register, updateUserInfo]);
+  }
 
-  return (
-    <AuthContext.Provider
-      value={contextValue}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
