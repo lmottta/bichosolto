@@ -87,7 +87,7 @@ const MainLayout = () => {
               )}
             </div>
             <Link to="/" className="flex items-center">
-              <img src={logoImg} alt="Bicho Solto" className="h-8 w-auto mr-2 animate-gentle-pulse" style={{ width: '130px', height: '130px' }} />
+              <img src={logoImg} alt="Bicho Solto" className="h-8 w-auto mr-2 animate-gentle-pulse" style={{ width: '80px', height: '80px' }} />
               <span className={`text-xl font-bold hidden md:inline ${isScrolled ? 'text-primary' : 'text-primary drop-shadow-text'}`}>Bicho Solto</span>
             </Link>
           </div>
