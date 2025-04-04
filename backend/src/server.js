@@ -13,8 +13,25 @@ const routes = require('./routes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Log inicial das configurações do servidor
+console.log('--- Configuração do Servidor Backend ---');
+console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`PORT (process.env.PORT): ${process.env.PORT}`);
+console.log(`PORT a ser usado: ${PORT}`);
+console.log(`API_URL (process.env.API_URL): ${process.env.API_URL}`); // Verificar se está sendo usado em algum lugar
+console.log(`CORS_ORIGIN (process.env.CORS_ORIGIN): ${process.env.CORS_ORIGIN}`);
+console.log('--------------------------------------');
+
 // Middleware
-app.use(cors());
+// Configurar CORS explicitamente com a origem do Railway se necessário
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*', // Use a variável de ambiente ou permita tudo
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  credentials: true,
+};
+console.log('Opções CORS:', corsOptions);
+app.use(cors(corsOptions));
+// app.use(cors()); // Versão anterior
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -31,6 +48,7 @@ app.get('/', (req, res) => {
 
 // Rota de health check para o Railway
 app.get('/health', (req, res) => {
+  console.log('Recebida requisição GET /health'); // Log para health check
   res.status(200).json({ status: 'ok' });
 });
 
@@ -88,7 +106,7 @@ app.get('/api/diagnostico', async (req, res) => {
 // Inicialização do servidor
 const startServer = async () => {
   try {
-    // Testar conexão com o banco de dados
+    console.log('Tentando conectar ao banco de dados...');
     await sequelize.authenticate();
     console.log('Conexão com o banco de dados estabelecida com sucesso.');
     
@@ -103,16 +121,22 @@ const startServer = async () => {
     }
     
     // Iniciar o servidor
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando na porta ${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => { // Escutar em 0.0.0.0 para aceitar conexões externas no contêiner
+      console.log(`Servidor backend iniciado e rodando na porta ${PORT}`);
     });
   } catch (error) {
-    console.error('Erro ao iniciar o servidor:', error);
+    console.error('--- ERRO FATAL AO INICIAR O SERVIDOR ---');
+    console.error('Erro ao conectar ao DB ou iniciar o listener:', error);
+    if (error.original) { // Erro específico do Sequelize/DB
+      console.error('Erro Original (DB):', error.original);
+    }
     // Log mais detalhado do erro
     if (error.parent) {
-      console.error('Erro SQL:', error.parent.message);
+      console.error('Erro Pai (SQL):', error.parent.message);
       console.error('Consulta SQL:', error.sql);
     }
+    console.error('-----------------------------------------');
+    process.exit(1); // Encerrar o processo se a inicialização falhar
   }
 };
 
