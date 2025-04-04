@@ -2,7 +2,6 @@ import { createContext, useState, useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import api from '../api/axios'
-import jwtDecode from 'jwt-decode'
 import { toast } from 'react-toastify'
 
 const AuthContext = createContext()
@@ -18,23 +17,13 @@ export const AuthProvider = ({ children }) => {
   // Verificar se o usuário já está autenticado ao carregar a página
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token')
+      const userId = localStorage.getItem('userId')
       
-      if (token) {
+      if (userId) {
         try {
-          // Verificar se o token expirou
-          const decodedToken = jwtDecode(token)
-          const currentTime = Date.now() / 1000
-          
-          if (decodedToken.exp < currentTime) {
-            // Token expirado
-            logout()
-            return
-          }
-          
-          // Configurar o token no cabeçalho das requisições
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          // Configurar o ID do usuário no cabeçalho das requisições
+          axios.defaults.headers.common['Authorization'] = userId
+          api.defaults.headers.common['Authorization'] = userId
           
           // Obter informações do usuário
           const response = await api.get('/api/users/me')
@@ -57,14 +46,14 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true)
       const response = await api.post('/api/auth/login', { email, password })
-      const { token, user } = response.data
+      const { userId, user } = response.data
       
-      // Salvar token no localStorage
-      localStorage.setItem('token', token)
+      // Salvar ID do usuário no localStorage
+      localStorage.setItem('userId', userId)
       
-      // Configurar o token no cabeçalho das requisições
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      // Configurar o ID do usuário no cabeçalho das requisições
+      axios.defaults.headers.common['Authorization'] = userId
+      api.defaults.headers.common['Authorization'] = userId
       
       setUser(user)
       setIsAuthenticated(true)
@@ -134,14 +123,14 @@ export const AuthProvider = ({ children }) => {
       console.log('Resposta recebida com sucesso:', response.status);
       console.log('Dados do usuário:', response.data.user ? {...response.data.user, password: undefined} : 'Sem dados de usuário');
       
-      const { token, user } = response.data;
+      const { userId, user } = response.data;
       
-      // Salvar token no localStorage
-      localStorage.setItem('token', token);
+      // Salvar ID do usuário no localStorage
+      localStorage.setItem('userId', userId);
       
-      // Configurar o token no cabeçalho das requisições
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Configurar o ID do usuário no cabeçalho das requisições
+      axios.defaults.headers.common['Authorization'] = userId;
+      api.defaults.headers.common['Authorization'] = userId;
       
       setUser(user);
       setIsAuthenticated(true);
@@ -247,7 +236,7 @@ export const AuthProvider = ({ children }) => {
 
   // Função de logout
   const logout = () => {
-    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
     delete axios.defaults.headers.common['Authorization']
     delete api.defaults.headers.common['Authorization']
     setUser(null)

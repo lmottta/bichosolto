@@ -27,6 +27,12 @@ api.interceptors.request.use(
   (config) => {
     console.log(`Enviando requisição para: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
     
+    // Verificar se há um ID de usuário no localStorage
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      config.headers.Authorization = userId;
+    }
+    
     // Adicionar configuração de retry
     return setupRetry(config);
   },
@@ -98,4 +104,4 @@ api.interceptors.response.use(
   }
 );
 
-export default api; 
+export default api;

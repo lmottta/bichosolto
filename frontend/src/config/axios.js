@@ -25,12 +25,13 @@ window.addEventListener('click', (event) => {
   }
 });
 
-// Interceptor para adicionar o token de autenticação
+// Interceptor para adicionar ID de usuário para autenticação
 axios.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Verificar se há um ID de usuário no localStorage
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      config.headers.Authorization = userId;
     }
     
     // Para debug: Mostrar a URL completa que está sendo chamada
@@ -83,4 +84,4 @@ axios.interceptors.response.use(
   }
 );
 
-export default axios; 
+export default axios;

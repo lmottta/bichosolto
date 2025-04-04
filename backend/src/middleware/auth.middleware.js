@@ -1,7 +1,6 @@
-const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
-// Middleware para verificar autenticação
+// Middleware para verificar autenticação com sessão simples
 const authenticate = async (req, res, next) => {
   try {
     // Verificar se é uma requisição pública marcada
@@ -11,20 +10,17 @@ const authenticate = async (req, res, next) => {
       return next();
     }
     
-    // Verificar se o token está presente no cabeçalho
+    // Verificar se o ID do usuário está presente no cabeçalho
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Acesso não autorizado. Token não fornecido.' });
+    if (!authHeader) {
+      return res.status(401).json({ message: 'Acesso não autorizado. Credenciais não fornecidas.' });
     }
 
-    // Extrair o token do cabeçalho
-    const token = authHeader.split(' ')[1];
-
-    // Verificar e decodificar o token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Extrair o ID do usuário do cabeçalho
+    const userId = authHeader;
 
     // Buscar o usuário no banco de dados
-    const user = await User.findByPk(decoded.id);
+    const user = await User.findByPk(userId);
     if (!user) {
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
@@ -44,9 +40,6 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token inválido ou expirado.' });
-    }
     console.error('Erro de autenticação:', error);
     res.status(500).json({ message: 'Erro interno do servidor.' });
   }
