@@ -87,7 +87,7 @@ const MainLayout = () => {
               )}
             </div>
             <Link to="/" className="flex items-center">
-              <img src={logoImg} alt="Bicho Solto" className="h-8 w-auto mr-2 animate-gentle-pulse" style={{ width: '30px', height: '30px' }} />
+              <img src={logoImg} alt="Bicho Solto" className="h-8 w-auto mr-2 animate-gentle-pulse" style={{ width: '130px', height: '130px' }} />
               <span className={`text-xl font-bold hidden md:inline ${isScrolled ? 'text-primary' : 'text-primary drop-shadow-text'}`}>Bicho Solto</span>
             </Link>
           </div>
@@ -185,7 +185,7 @@ const MainLayout = () => {
           <div className="footer">
             <div>
               <div className="flex items-center mb-4">
-                <img src={logoImg} alt="Bicho Solto" className="mr-2" style={{ width: '50px', height: '50px' }} />
+                <img src={logoImg} alt="Bicho Solto" className="mr-2" style={{ width: '150px', height: '150px' }} />
                 <span className="text-lg font-bold">Bicho Solto</span>
               </div>
               <p>Conectando pessoas e animais<br/>Salvando vidas desde 2022</p>
