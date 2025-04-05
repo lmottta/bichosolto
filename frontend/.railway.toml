@@ -10,5 +10,5 @@ healthcheckPath = "/"
 healthcheckTimeout = 10
 
 [service]
-name = "bicho-solto-frontend"
+name = "bichosolto"
 port = 80
