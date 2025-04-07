@@ -36,5 +36,12 @@ services:
       - UPLOAD_DIR=uploads
       - MAX_FILE_SIZE=5242880
       - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     volumes:
-      - railway_uploads:/app/uploads 
+      - railway_uploads:/app/uploads
+
+volumes:
+  railway_uploads:

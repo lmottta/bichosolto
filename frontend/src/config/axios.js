@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// Obter a URL base da API das variáveis de ambiente
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
 // Configuração base do axios
-axios.defaults.baseURL = 'http://localhost:3000';
+axios.defaults.baseURL = API_URL;
+
+console.log('Axios configurado para API em:', API_URL);
 
 // Flag para controlar se estamos navegando manualmente
 let isManualNavigation = false;
@@ -27,9 +32,14 @@ axios.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Para debug: Mostrar a URL completa que está sendo chamada
+    console.debug('Requisição API:', config.method?.toUpperCase(), config.baseURL + config.url);
+    
     return config;
   },
   (error) => {
+    console.error('Erro no interceptor de requisição:', error);
     return Promise.reject(error);
   }
 );
@@ -41,6 +51,20 @@ const publicRoutes = ['/donate', '/volunteer', '/report-abuse', '/animals', '/ev
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('Erro na requisição API:', error.config?.method?.toUpperCase(), error.config?.url, error.message);
+    
+    // Log detalhado para diagnóstico
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Headers:', JSON.stringify(error.response.headers));
+      console.error('Data:', JSON.stringify(error.response.data));
+    } else if (error.request) {
+      console.error('Requisição foi feita mas não houve resposta', error.request);
+    } else {
+      console.error('Erro na configuração da requisição:', error.message);
+    }
+    console.error('Config completa:', JSON.stringify(error.config));
+    
     if (error.response?.status === 401) {
       // Verificar se o usuário está em uma rota pública
       const currentPath = window.location.pathname;

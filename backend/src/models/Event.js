@@ -82,10 +82,23 @@ const Event = sequelize.define('Event', {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: 'User',
+      model: 'users',
       key: 'id',
-    },
+    }
   },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  }
+}, {
+  tableName: 'events',
+  timestamps: true
 });
 
 module.exports = Event;

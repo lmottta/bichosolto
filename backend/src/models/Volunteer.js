@@ -71,6 +71,16 @@ const Volunteer = sequelize.define('Volunteer', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  }
 });
 
 module.exports = Volunteer;

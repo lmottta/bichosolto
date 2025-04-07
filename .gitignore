@@ -55,3 +55,39 @@ docker-compose.override.yaml
 # Railway específico
 .railway/
 NUL
+
+# Diretórios de dependências
+/node_modules
+/frontend/node_modules
+/backend/node_modules
+
+# Arquivos de build
+/frontend/dist
+/frontend/build
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de IDEs e editores
+/.idea
+/.vscode
+*.swp
+*.swo
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Arquivos Railway locais
+.railway/
+
+# Arquivos de lock
+package-lock.json
+yarn.lock
+
+# Arquivos de teste
+/coverage
+/.nyc_output

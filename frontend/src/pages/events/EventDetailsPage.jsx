@@ -223,7 +223,7 @@ const EventDetailsPage = () => {
                         e.target.onerror = null;
                         // Tentar URL alternativa se a principal falhar
                         if (event.organizer.profileImage) {
-                          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                          const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
                           if (!event.organizer.profileImage.startsWith('http')) {
                             e.target.src = `${apiBaseUrl}${event.organizer.profileImage}`;
                           }
