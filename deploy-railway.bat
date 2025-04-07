@@ -49,14 +49,14 @@ echo Configurando variaveis de ambiente...
 
 REM Configuracoes especificas obrigatorias
 echo Configurando variaveis especificas do banco de dados...
+call railway variables set API_URL=https://bichosolto-production.up.railway.app
 call railway variables set DB_HOST=monorail.proxy.rlwy.net
 call railway variables set DB_PORT=48704
 call railway variables set DB_NAME=railway
 call railway variables set DB_USER=postgres
 call railway variables set DB_PASSWORD=trHjXCnIPMLvaSVddPKwNxGGMgjUUhbh
-call railway variables set JWT_SECRET=Yhsjdshdiuwew12@
+call railway variables set JWT_SECRET=seu_segredo_jwt_aqui
 call railway variables set JWT_EXPIRES_IN=7d
-call railway variables set API_URL=https://bichosolto-production.up.railway.app
 call railway variables set PORT=3000
 call railway variables set NODE_ENV=production
 call railway variables set GOOGLE_MAPS_API_KEY=AIzaSyC7_3XFwXiqZRICVjloOfO9u-hGD1Ei31k

@@ -41,14 +41,14 @@ echo "Configurando variáveis de ambiente..."
 
 # Configurações específicas obrigatórias
 echo "Configurando variáveis específicas do banco de dados..."
+railway variables set API_URL=https://bichosolto-production.up.railway.app || { echo "Falha ao configurar API_URL. Continuando..."; }
 railway variables set DB_HOST=monorail.proxy.rlwy.net || { echo "Falha ao configurar DB_HOST. Continuando..."; }
 railway variables set DB_PORT=48704 || { echo "Falha ao configurar DB_PORT. Continuando..."; }
 railway variables set DB_NAME=railway || { echo "Falha ao configurar DB_NAME. Continuando..."; }
 railway variables set DB_USER=postgres || { echo "Falha ao configurar DB_USER. Continuando..."; }
 railway variables set DB_PASSWORD=trHjXCnIPMLvaSVddPKwNxGGMgjUUhbh || { echo "Falha ao configurar DB_PASSWORD. Continuando..."; }
-railway variables set JWT_SECRET=Yhsjdshdiuwew12@ || { echo "Falha ao configurar JWT_SECRET. Continuando..."; }
+railway variables set JWT_SECRET=seu_segredo_jwt_aqui || { echo "Falha ao configurar JWT_SECRET. Continuando..."; }
 railway variables set JWT_EXPIRES_IN=7d || { echo "Falha ao configurar JWT_EXPIRES_IN. Continuando..."; }
-railway variables set API_URL=https://bichosolto-production.up.railway.app || { echo "Falha ao configurar API_URL. Continuando..."; }
 railway variables set PORT=3000 || { echo "Falha ao configurar PORT. Continuando..."; }
 railway variables set NODE_ENV=production || { echo "Falha ao configurar NODE_ENV. Continuando..."; }
 railway variables set GOOGLE_MAPS_API_KEY=AIzaSyC7_3XFwXiqZRICVjloOfO9u-hGD1Ei31k || { echo "Falha ao configurar GOOGLE_MAPS_API_KEY. Continuando..."; }

@@ -58,14 +58,14 @@ Write-Host "Configurando variáveis específicas do banco de dados..." -Foregrou
 
 # Array de variáveis para configurar
 $variables = @(
+    @{Name="API_URL"; Value="https://bichosolto-production.up.railway.app"},
     @{Name="DB_HOST"; Value="monorail.proxy.rlwy.net"},
     @{Name="DB_PORT"; Value="48704"},
     @{Name="DB_NAME"; Value="railway"},
     @{Name="DB_USER"; Value="postgres"},
     @{Name="DB_PASSWORD"; Value="trHjXCnIPMLvaSVddPKwNxGGMgjUUhbh"},
-    @{Name="JWT_SECRET"; Value="Yhsjdshdiuwew12@"},
+    @{Name="JWT_SECRET"; Value="seu_segredo_jwt_aqui"},
     @{Name="JWT_EXPIRES_IN"; Value="7d"},
-    @{Name="API_URL"; Value="https://bichosolto-production.up.railway.app"},
     @{Name="PORT"; Value="3000"},
     @{Name="NODE_ENV"; Value="production"},
     @{Name="GOOGLE_MAPS_API_KEY"; Value="AIzaSyC7_3XFwXiqZRICVjloOfO9u-hGD1Ei31k"},
