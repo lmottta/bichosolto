@@ -29,7 +29,7 @@ As seguintes variáveis de ambiente são necessárias para o frontend:
 | Variável | Descrição | Valor Exemplo |
 |----------|-----------|---------------|
 | PORT | Porta para o servidor | 3000 |
-| VITE_API_URL | URL da API backend | https://bichosoltofrontend-production.up.railway.app |
+| VITE_API_URL | URL da API backend | https://bichosolto-production.up.railway.app |
 | VITE_APP_ENV | Ambiente da aplicação | production |
 | VITE_APP_TITLE | Título da aplicação | Bicho Solto |
 | GENERATE_SOURCEMAP | Gerar sourcemaps | false |

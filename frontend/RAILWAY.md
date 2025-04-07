@@ -21,7 +21,7 @@ As seguintes variáveis de ambiente são necessárias:
 |----------|-----------|---------------------|
 | NODE_ENV | Ambiente de execução | production |
 | PORT | Porta onde o serviço será executado | 3000 |
-| VITE_API_URL | URL da API de backend | https://bichosoltofrontend-production.up.railway.app |
+| VITE_API_URL | URL da API de backend | https://bichosolto-production.up.railway.app |
 | VITE_APP_ENV | Ambiente da aplicação | production |
 | VITE_APP_TITLE | Título da aplicação | Bicho Solto |
 
