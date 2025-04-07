@@ -55,6 +55,7 @@ docker-compose.override.yaml
 # Railway específico
 .railway/
 NUL
+<<<<<<< HEAD
 
 # Diretórios de dependências
 /node_modules
@@ -91,3 +92,18 @@ yarn.lock
 # Arquivos de teste
 /coverage
 /.nyc_output
+=======
+# Diretório bicho_solto_py
+bicho_solto_py/
+
+# Executáveis e Bats
+run-docker.bat
+run-docker.sh
+setup-railway.sh
+start-docker.bat
+stop-docker.bat
+fix-docker-setup.bat
+fix-docker-setup.sh
+
+
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1

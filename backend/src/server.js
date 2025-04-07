@@ -46,9 +46,15 @@ const log = (message, isError = false) => {
 
 // Middleware
 app.use(cors({
+<<<<<<< HEAD
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5001'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+=======
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5000', 'http://localhost:5001'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Public-Request'],
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
   credentials: true
 }));
 app.use(express.json());

@@ -14,4 +14,10 @@ yarn-error.log
 coverage
 .editorconfig
 .vscode
-*.log 
+*.log
+.github
+*.md
+!README.md
+.env.local
+.env.development
+.DS_Store 

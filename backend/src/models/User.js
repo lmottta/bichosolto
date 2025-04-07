@@ -23,6 +23,12 @@ const User = sequelize.define('User', {
   password: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      len: {
+        args: [6, 100],
+        msg: 'A senha deve ter no mínimo 6 caracteres'
+      }
+    }
   },
   phone: {
     type: DataTypes.STRING,

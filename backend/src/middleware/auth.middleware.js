@@ -1,7 +1,6 @@
-const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
-// Middleware para verificar autenticação
+// Middleware para verificar autenticação com sessão simples
 const authenticate = async (req, res, next) => {
   try {
     // Verificar se é uma requisição pública marcada
@@ -11,21 +10,31 @@ const authenticate = async (req, res, next) => {
       return next();
     }
     
-    // Verificar se o token está presente no cabeçalho
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Acesso não autorizado. Token não fornecido.' });
+    // Verificar diferentes cabeçalhos de autenticação
+    // Primeiro, tentar o cabeçalho Authorization padrão
+    let userId = req.headers.authorization;
+    
+    // Verificar cabeçalhos alternativos se o padrão não estiver disponível
+    if (!userId) {
+      userId = req.headers['x-user-id'] || req.headers['x-userid'];
+      
+      // Se ainda não temos um ID, verificar o cabeçalho em lowercase
+      if (!userId) {
+        userId = req.headers['authorization'] || req.headers['x-authorization'];
+      }
     }
-
-    // Extrair o token do cabeçalho
-    const token = authHeader.split(' ')[1];
-
-    // Verificar e decodificar o token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (!userId) {
+      console.log('Cabeçalhos da requisição:', JSON.stringify(req.headers));
+      return res.status(401).json({ message: 'Acesso não autorizado. Credenciais não fornecidas.' });
+    }
+    
+    console.log('ID do usuário extraído do cabeçalho:', userId);
 
     // Buscar o usuário no banco de dados
-    const user = await User.findByPk(decoded.id);
+    const user = await User.findByPk(userId);
     if (!user) {
+      console.log('Usuário não encontrado com ID:', userId);
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
 
@@ -33,6 +42,14 @@ const authenticate = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(401).json({ message: 'Conta desativada. Entre em contato com o suporte.' });
     }
+
+    // Log detalhado do usuário encontrado
+    console.log('Usuário autenticado:', {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name
+    });
 
     // Adicionar o usuário ao objeto de requisição
     req.user = {
@@ -44,9 +61,6 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token inválido ou expirado.' });
-    }
     console.error('Erro de autenticação:', error);
     res.status(500).json({ message: 'Erro interno do servidor.' });
   }

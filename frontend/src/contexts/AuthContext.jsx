@@ -2,7 +2,10 @@ import { createContext, useState, useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import api from '../api/axios'
+<<<<<<< HEAD
 import jwtDecode from 'jwt-decode'
+=======
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
 import { toast } from 'react-toastify'
 
 const AuthContext = createContext()
@@ -18,10 +21,11 @@ export const AuthProvider = ({ children }) => {
   // Verificar se o usuário já está autenticado ao carregar a página
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token')
+      const userId = localStorage.getItem('userId')
       
-      if (token) {
+      if (userId) {
         try {
+<<<<<<< HEAD
           // Verificar se o token expirou
           const decodedToken = jwtDecode(token)
           const currentTime = Date.now() / 1000
@@ -38,11 +42,50 @@ export const AuthProvider = ({ children }) => {
           
           // Obter informações do usuário
           const response = await api.get('/api/users/me')
+=======
+          // Configurar o ID do usuário no cabeçalho das requisições
+          axios.defaults.headers.common['Authorization'] = userId
+          api.defaults.headers.common['Authorization'] = userId
+          
+          // Obter informações do usuário
+          console.log('Verificando autenticação - userId:', userId)
+          const response = await api.get('/api/users/me')
+          console.log('Dados do usuário obtidos:', response.data)
+          
+          // Verificação de dados vazios ou incompletos
+          if (!response.data || Object.keys(response.data).length === 0) {
+            console.error('Dados do usuário vazios ou incompletos')
+            throw new Error('Dados do usuário vazios ou incompletos')
+          }
+          
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
           setUser(response.data)
           setIsAuthenticated(true)
         } catch (error) {
           console.error('Erro ao verificar autenticação:', error)
-          logout()
+          
+          // Tentar novamente com uma requisição direta para resolver problemas de CORS ou cache
+          try {
+            console.log('Tentando requisição alternativa para obter dados do usuário')
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+            const directResponse = await fetch(`${API_URL}/api/users/me`, {
+              headers: {
+                'Authorization': userId
+              }
+            })
+            
+            if (directResponse.ok) {
+              const userData = await directResponse.json()
+              console.log('Dados do usuário obtidos via fetch direto:', userData)
+              setUser(userData)
+              setIsAuthenticated(true)
+            } else {
+              throw new Error(`Falha na requisição direta: ${directResponse.status}`)
+            }
+          } catch (retryError) {
+            console.error('Erro na tentativa alternativa:', retryError)
+            logout()
+          }
         }
       }
       
@@ -57,14 +100,24 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true)
       const response = await api.post('/api/auth/login', { email, password })
+<<<<<<< HEAD
       const { token, user } = response.data
+=======
+      const { userId, user } = response.data
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
       
-      // Salvar token no localStorage
-      localStorage.setItem('token', token)
+      // Salvar ID do usuário no localStorage
+      localStorage.setItem('userId', userId)
       
+<<<<<<< HEAD
       // Configurar o token no cabeçalho das requisições
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+=======
+      // Configurar o ID do usuário no cabeçalho das requisições
+      axios.defaults.headers.common['Authorization'] = userId
+      api.defaults.headers.common['Authorization'] = userId
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
       
       setUser(user)
       setIsAuthenticated(true)
@@ -85,6 +138,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       console.log('Iniciando processo de registro');
+<<<<<<< HEAD
       
       // Sanitizar dados antes de enviar
       const sanitizedData = { ...userData };
@@ -147,6 +201,70 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       toast.success('Cadastro realizado com sucesso!');
       
+=======
+      
+      // Sanitizar dados antes de enviar
+      const sanitizedData = { ...userData };
+      
+      // Garantir que os valores de telefone e outros campos estão corretos
+      if (typeof sanitizedData.phone === 'string') {
+        sanitizedData.phone = sanitizedData.phone.replace(/\D/g, '');
+      }
+      
+      if (sanitizedData.role === 'ong') {
+        if (typeof sanitizedData.cnpj === 'string') {
+          sanitizedData.cnpj = sanitizedData.cnpj.replace(/\D/g, '');
+        }
+        
+        if (typeof sanitizedData.responsiblePhone === 'string') {
+          sanitizedData.responsiblePhone = sanitizedData.responsiblePhone.replace(/\D/g, '');
+        }
+        
+        if (typeof sanitizedData.postalCode === 'string') {
+          sanitizedData.postalCode = sanitizedData.postalCode.replace(/\D/g, '');
+        }
+      } else {
+        // Se não for ONG, remover campos específicos
+        delete sanitizedData.cnpj;
+        delete sanitizedData.description;
+        delete sanitizedData.foundingDate;
+        delete sanitizedData.website;
+        delete sanitizedData.socialMedia;
+        delete sanitizedData.responsibleName;
+        delete sanitizedData.responsiblePhone;
+        delete sanitizedData.postalCode;
+      }
+      
+      console.log('Dados sanitizados para registro:', {...sanitizedData, password: '*****'});
+      
+      // Log detalhado da requisição
+      console.log(`Enviando POST para ${api.defaults.baseURL}/api/auth/register`);
+      
+      // Tentar a requisição com timeout aumentado e encapsulamento para evitar travamentos
+      const response = await Promise.race([
+        api.post('/api/auth/register', sanitizedData),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout manual - servidor não respondeu em tempo hábil')), 20000)
+        )
+      ]);
+      
+      console.log('Resposta recebida com sucesso:', response.status);
+      console.log('Dados do usuário:', response.data.user ? {...response.data.user, password: undefined} : 'Sem dados de usuário');
+      
+      const { userId, user } = response.data;
+      
+      // Salvar ID do usuário no localStorage
+      localStorage.setItem('userId', userId);
+      
+      // Configurar o ID do usuário no cabeçalho das requisições
+      axios.defaults.headers.common['Authorization'] = userId;
+      api.defaults.headers.common['Authorization'] = userId;
+      
+      setUser(user);
+      setIsAuthenticated(true);
+      toast.success('Cadastro realizado com sucesso!');
+      
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
       return true;
     } catch (error) {
       console.error('Erro ao fazer cadastro:', error);
@@ -161,7 +279,12 @@ export const AuthProvider = ({ children }) => {
         
         // Verificar se o backend está em execução
         try {
+<<<<<<< HEAD
           const testConnection = await fetch('http://localhost:5001/api');
+=======
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+          const testConnection = await fetch(`${API_URL}/api`);
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
           console.log('Teste de conexão com backend:', testConnection.status);
         } catch (connError) {
           console.error('Backend não está acessível:', connError);
@@ -214,14 +337,34 @@ export const AuthProvider = ({ children }) => {
       // Se já recebemos os dados do usuário, apenas atualizamos o state
       if (userData) {
         console.log('Atualizando dados do usuário no contexto:', userData);
-        setUser(userData)
+        // Adicionar timestamp para evitar cache de imagem
+        if (userData.profileImageUrl) {
+          const timestamp = new Date().getTime();
+          userData.profileImageUrl = `${userData.profileImageUrl}?t=${timestamp}`;
+        }
+        // Garantir que o usuário seja atualizado com todos os dados
+        setUser(prevUser => ({
+          ...prevUser,
+          ...userData
+        }))
+        setIsAuthenticated(true) // Garantir que o usuário continue autenticado
         return true
       }
       
       // Caso contrário, buscamos os dados atualizados da API
       const response = await api.get('/api/users/me')
       console.log('Dados do usuário buscados da API:', response.data);
-      setUser(response.data)
+      // Adicionar timestamp para evitar cache de imagem
+      if (response.data.profileImageUrl) {
+        const timestamp = new Date().getTime();
+        response.data.profileImageUrl = `${response.data.profileImageUrl}?t=${timestamp}`;
+      }
+      // Atualizar o usuário com os dados da API
+      setUser(prevUser => ({
+        ...prevUser,
+        ...response.data
+      }))
+      setIsAuthenticated(true) // Garantir que o usuário continue autenticado
       return true
     } catch (error) {
       console.error('Erro ao atualizar informações do usuário:', error)
@@ -246,6 +389,7 @@ export const AuthProvider = ({ children }) => {
 
   // Função de logout
   const logout = () => {
+<<<<<<< HEAD
     localStorage.removeItem('token')
     delete axios.defaults.headers.common['Authorization']
     delete api.defaults.headers.common['Authorization']
@@ -265,6 +409,41 @@ export const AuthProvider = ({ children }) => {
       toast.info('Você saiu da sua conta')
     } else {
       toast.info('Sessão encerrada')
+=======
+    try {
+      console.log('Iniciando processo de logout')
+      
+      // Limpar dados de autenticação do localStorage
+      localStorage.removeItem('userId')
+      
+      // Limpar cabeçalhos de autorização
+      delete axios.defaults.headers.common['Authorization']
+      delete api.defaults.headers.common['Authorization']
+      
+      // Atualizar estado do contexto
+      setUser(null)
+      setIsAuthenticated(false)
+      
+      // Lista de páginas públicas
+      const publicRoutes = ['/donate', '/volunteer', '/animals', '/events', '/', '/about', '/contact', '/report-abuse']
+      const currentPath = window.location.pathname
+      
+      // Verificar se está em uma página pública
+      const isPublicPage = publicRoutes.some(route => currentPath.startsWith(route))
+      
+      console.log('Logout realizado com sucesso. Página atual:', currentPath, 'É página pública:', isPublicPage)
+      
+      // Só redirecionar para login se não estiver em uma página pública
+      if (!isPublicPage) {
+        navigate('/login')
+        toast.info('Você saiu da sua conta')
+      } else {
+        toast.info('Sessão encerrada')
+      }
+    } catch (error) {
+      console.error('Erro durante o logout:', error)
+      toast.error('Ocorreu um erro ao sair da conta')
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
     }
   }
 

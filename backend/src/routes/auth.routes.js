@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
 // Middleware para validação de erros
@@ -100,6 +99,16 @@ router.post(
         if (postalCode) userData.postalCode = postalCode;
         userData.isVerified = false; // ONGs precisam ser verificadas
       }
+<<<<<<< HEAD
+
+      console.log('Dados formatados para criação do usuário:', { ...userData, password: '******' });
+
+      // Criar novo usuário
+      const user = await User.create(userData);
+
+      console.log('Usuário criado com sucesso:', user.id);
+=======
+>>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
 
       console.log('Dados formatados para criação do usuário:', { ...userData, password: '******' });
 
@@ -108,14 +117,7 @@ router.post(
 
       console.log('Usuário criado com sucesso:', user.id);
 
-      // Gerar token JWT
-      const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-      );
-
-      // Retornar usuário e token (sem a senha)
+      // Retornar usuário e ID (sem a senha)
       const userResponse = {
         id: user.id,
         name: user.name,
@@ -143,7 +145,7 @@ router.post(
 
       return res.status(201).json({ 
         user: userResponse, 
-        token,
+        userId: user.id,
         message: role === 'ong' 
           ? 'Cadastro realizado com sucesso! Sua conta será analisada antes de ser ativada.'
           : 'Cadastro realizado com sucesso!'
@@ -184,14 +186,7 @@ router.post(
         return res.status(401).json({ message: 'Conta desativada. Entre em contato com o suporte.' });
       }
 
-      // Gerar token JWT
-      const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-      );
-
-      // Retornar usuário e token (sem a senha)
+      // Retornar usuário e ID (sem a senha)
       const userResponse = {
         id: user.id,
         name: user.name,
@@ -205,7 +200,7 @@ router.post(
         createdAt: user.createdAt,
       };
 
-      res.json({ user: userResponse, token });
+      res.json({ user: userResponse, userId: user.id });
     } catch (error) {
       console.error('Erro ao fazer login:', error);
       res.status(500).json({ message: 'Erro ao fazer login' });
