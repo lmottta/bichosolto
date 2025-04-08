@@ -9,19 +9,13 @@ const setupRetry = (config) => {
   return config;
 };
 
-<<<<<<< HEAD
-// Criando uma instância do axios com configurações base
-const api = axios.create({
-  baseURL: 'http://localhost:5001',
-=======
 // Obtém a URL da API das variáveis de ambiente
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 console.log('API URL utilizada:', API_URL);
 
 // Criando uma instância do axios com configurações base
 const api = axios.create({
   baseURL: API_URL,
->>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
   timeout: 15000, // 15 segundos (aumentado para dar mais tempo ao servidor)
   headers: {
     'Content-Type': 'application/json'
@@ -33,8 +27,6 @@ api.interceptors.request.use(
   (config) => {
     console.log(`Enviando requisição para: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
     
-<<<<<<< HEAD
-=======
     // Verificar se há um ID de usuário no localStorage
     const userId = localStorage.getItem('userId');
     if (userId) {
@@ -42,7 +34,7 @@ api.interceptors.request.use(
       config.headers['Authorization'] = userId;
       console.log('Cabeçalho Authorization adicionado:', userId);
       
-      // Verificar se estamos no Railway (produção)
+      // Verificar se estamos em produção
       const isProduction = window.location.hostname !== 'localhost';
       if (isProduction) {
         // Adicionar cabeçalhos alternativos para garantir compatibilidade
@@ -54,7 +46,6 @@ api.interceptors.request.use(
       console.log('Requisição sem autorização (nenhum userId no localStorage)');
     }
     
->>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
     // Adicionar configuração de retry
     return setupRetry(config);
   },
@@ -115,11 +106,7 @@ api.interceptors.response.use(
       
       // Tentar fazer uma requisição simples para verificar se o servidor está acessível
       try {
-<<<<<<< HEAD
-        await fetch('http://localhost:5001/api');
-=======
         await fetch(`${API_URL}/api`);
->>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
         console.log('Servidor está acessível, mas a requisição específica falhou');
       } catch (testError) {
         console.error('Servidor não está acessível:', testError);
@@ -130,8 +117,4 @@ api.interceptors.response.use(
   }
 );
 
-<<<<<<< HEAD
-export default api; 
-=======
 export default api;
->>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1

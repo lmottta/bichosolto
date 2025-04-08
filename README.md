@@ -51,7 +51,6 @@ O Animal Rescue Hub é uma plataforma que permite aos usuários denunciar maus-t
 
 ### DevOps e Implantação
 - Docker e Docker Compose
-- Railway para hospedagem
 
 ## Instalação e Configuração
 
@@ -177,47 +176,6 @@ MSYS_NO_PATHCONV=1 docker-compose up -d
 **Docker Desktop não inicia automaticamente**:
 Certifique-se de que o Docker Desktop está instalado e funcionando. Às vezes, o Docker Desktop pode precisar ser iniciado manualmente como administrador.
 
-## Implantação em Produção com Railway
-
-Este projeto está configurado para fácil implantação no [Railway](https://railway.app/).
-
-### Passos para Implantação
-
-1. Crie uma conta no Railway
-
-2. Instale a CLI do Railway (opcional)
-```bash
-npm i -g @railway/cli
-```
-
-3. Faça login na CLI (opcional)
-```bash
-railway login
-```
-
-4. Inicie um novo projeto no Railway (via Dashboard ou CLI)
-```bash
-railway init
-```
-
-5. Implante o projeto
-```bash
-railway up
-```
-
-6. Configure as variáveis de ambiente no Dashboard do Railway
-
-### Variáveis de Ambiente para Railway
-
-Configure as seguintes variáveis de ambiente no projeto Railway:
-
-- `PORT`: Porta para o serviço frontend
-- `API_URL`: URL completa da API (ex: https://seu-app-backend.railway.app)
-- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Credenciais do banco de dados
-- `JWT_SECRET`: Chave secreta para autenticação JWT
-- `JWT_EXPIRES_IN`: Tempo de expiração do token
-- `GOOGLE_MAPS_API_KEY`: Chave da API do Google Maps
-
 ## Estrutura do Projeto
 
 ```
@@ -237,7 +195,6 @@ animal-rescue-hub/
 │   ├── middlewares/    # Middlewares
 │   └── utils/          # Utilitários
 ├── docker-compose.yml  # Configuração Docker para desenvolvimento
-├── docker-compose.railway.yml # Configuração Docker para Railway
 ├── run-docker.bat      # Script interativo para Windows
 ├── start-docker.bat    # Script para iniciar containers no Windows
 ├── stop-docker.bat     # Script para parar containers no Windows

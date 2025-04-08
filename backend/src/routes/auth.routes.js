@@ -99,16 +99,6 @@ router.post(
         if (postalCode) userData.postalCode = postalCode;
         userData.isVerified = false; // ONGs precisam ser verificadas
       }
-<<<<<<< HEAD
-
-      console.log('Dados formatados para criação do usuário:', { ...userData, password: '******' });
-
-      // Criar novo usuário
-      const user = await User.create(userData);
-
-      console.log('Usuário criado com sucesso:', user.id);
-=======
->>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
 
       console.log('Dados formatados para criação do usuário:', { ...userData, password: '******' });
 

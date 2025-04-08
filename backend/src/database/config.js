@@ -1,59 +1,27 @@
 const { Sequelize } = require('sequelize');
 const dotenv = require('dotenv');
 
-<<<<<<< HEAD
-// Configuração do Sequelize para conexão com o PostgreSQL
-const sequelize = new Sequelize({
-  dialect: 'postgres',
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  username: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
-  define: {
-    underscored: false,
-    underscoredAll: false,
-    freezeTableName: true,
-  },
-});
-=======
 dotenv.config();
->>>>>>> 5ad50e17d8486eddfaa4d6a8042fba99f8aa63c1
 
 let sequelize;
 
-// Se DATABASE_URL estiver definido, extrair os componentes corretamente
-if (process.env.DATABASE_URL) {
-  try {
-    // Criar o Sequelize diretamente com a string de conexão
-    sequelize = new Sequelize(process.env.DATABASE_URL, {
-      dialect: 'postgres',
-      dialectOptions: {
-        ssl: process.env.NODE_ENV === 'production' ? {
-          require: true,
-          rejectUnauthorized: false
-        } : false
-      },
-      logging: false
-    });
-  } catch (error) {
-    console.error('Erro ao configurar sequelize com DATABASE_URL:', error);
-  }
-} else {
-  // Configuração manual se não houver DATABASE_URL
-  sequelize = new Sequelize(
-    process.env.PG_DATABASE || 'bicho_solto_db',
-    process.env.PG_USER || 'postgres',
-    process.env.PG_PASSWORD || 'password',
-    {
-      host: process.env.PG_HOST || 'localhost',
-      port: parseInt(process.env.PG_PORT || '5432', 10),
-      dialect: 'postgres',
-      logging: false
+// Configuração para ambiente local
+sequelize = new Sequelize(
+  process.env.DB_NAME || 'bicho_solto_db',
+  process.env.DB_USER || 'postgres',
+  process.env.DB_PASSWORD || 'postgres_password',
+  {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    dialect: 'postgres',
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    define: {
+      underscored: false,
+      underscoredAll: false,
+      freezeTableName: true,
     }
-  );
-}
+  }
+);
 
 // Exportamos tanto a instância como um objeto com a propriedade sequelize
 module.exports = { sequelize, Sequelize };

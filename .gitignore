@@ -52,6 +52,16 @@ docker-compose.override.yaml
 /postgres_data/
 /pgadmin_data/
 
-# Railway específico
-.railway/
+# MDB
+.mdb
+.vs/
+lib
+dist
+dist-zip
+node_modules
+package-lock.json
+yarn.lock
+
+# Local Netlify folder
+.netlify
 NUL
